@@ -290,25 +290,10 @@ export async function importAscFile(
     }
   }
 
-  // Identificando duplicatas já existentes no banco
-  onProgress({ stage: "duplicatas", processed: 0, total: parsed.length });
-  const existentes = new Set<string>();
-  const keys = parsed.map((r) => r["source_record_key"] as string);
-  for (let i = 0; i < keys.length; i += BATCH_SIZE) {
-    const chunk = keys.slice(i, i + BATCH_SIZE);
-    const { data, error } = await supabase
-      .from("atendimentos")
-      .select("source_record_key")
-      .in("source_record_key", chunk);
-    if (error) throw error;
-    for (const row of data ?? []) {
-      if (row.source_record_key) existentes.add(row.source_record_key);
-    }
-    onProgress({ stage: "duplicatas", processed: Math.min(i + BATCH_SIZE, keys.length), total: keys.length });
-  }
-
-  const novosRows = parsed.filter((r) => !existentes.has(r["source_record_key"] as string));
-  const duplicados = duplicadosArquivo + (parsed.length - novosRows.length);
+   // Duplicatas tratadas pelo upsert com ignoreDuplicates no banco
+  onProgress({ stage: "duplicatas", processed: parsed.length, total: parsed.length });
+  const novosRows = parsed;
+  const duplicados = duplicadosArquivo;
 
   // Período coberto
   const datas = parsed
