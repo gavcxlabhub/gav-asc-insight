@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { UserPlus, ShieldCheck } from "lucide-react";
+import { UserPlus, ShieldCheck, KeyRound } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -134,6 +134,17 @@ function GerenciarUsuarios() {
     onError: (error: Error) => toast.error(error.message),
   });
 
+  const redefinirSenha = useMutation({
+    mutationFn: async (emailUsuario: string) => {
+      const { error } = await supabase.auth.resetPasswordForEmail(emailUsuario, {
+        redirectTo: `${window.location.origin}/auth`,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => toast.success("Email de redefinição de senha enviado."),
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   if (!isAdmin) {
     return (
       <>
@@ -164,6 +175,7 @@ function GerenciarUsuarios() {
                 <TableHead>Perfil</TableHead>
                 <TableHead>Ativo</TableHead>
                 <TableHead>Situação</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -198,6 +210,17 @@ function GerenciarUsuarios() {
                     <Badge variant={u.ativo ? "default" : "outline"}>
                       {u.ativo ? "Aprovado" : "Aguardando aprovação"}
                     </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={!u.email || redefinirSenha.isPending}
+                      onClick={() => u.email && redefinirSenha.mutate(u.email)}
+                    >
+                      <KeyRound className="mr-2 size-4" />
+                      Redefinir senha
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}

@@ -4,8 +4,12 @@ import { useQuery } from "@tanstack/react-query";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/empty-state";
 import { ImportDialog } from "@/components/import-dialog";
+import { Filters, useDashboardFilters } from "@/components/filters";
+import { KpiCards } from "@/components/kpi-cards";
+import { DashboardCharts } from "@/components/dashboard-charts";
+import { AtendimentosTable } from "@/components/atendimentos-table";
 import { useAuth } from "@/hooks/use-auth";
-import { periodoBaseQuery, totalAtendimentosQuery } from "@/lib/analytics-queries";
+import { totalAtendimentosQuery } from "@/lib/analytics-queries";
 
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
@@ -21,6 +25,8 @@ export const Route = createFileRoute("/_authenticated/")({
         property: "og:description",
         content: "Painel executivo dos atendimentos WhatsApp da GAV Resorts.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: VisaoExecutiva,
@@ -29,12 +35,9 @@ export const Route = createFileRoute("/_authenticated/")({
 function VisaoExecutiva() {
   const { isAdmin, user } = useAuth();
   const total = useQuery(totalAtendimentosQuery());
-  const periodo = useQuery({ ...periodoBaseQuery(), enabled: (total.data ?? 0) > 0 });
+  const { state, setState, filters } = useDashboardFilters();
 
   const temBase = (total.data ?? 0) > 0;
-
-  const formatar = (iso: string | null | undefined) =>
-    iso ? new Date(iso).toLocaleDateString("pt-BR") : "—";
 
   return (
     <>
@@ -44,10 +47,12 @@ function VisaoExecutiva() {
         actions={isAdmin && user ? <ImportDialog userId={user.id} /> : null}
       />
 
-      {!temBase ? (
+      {!total.isPending && !temBase ? (
         <EmptyState
           action={
-            isAdmin && user ? <ImportDialog userId={user.id} /> : (
+            isAdmin && user ? (
+              <ImportDialog userId={user.id} />
+            ) : (
               <p className="text-xs text-muted-foreground">
                 Solicite a um administrador a importação da base.
               </p>
@@ -55,31 +60,12 @@ function VisaoExecutiva() {
           }
         />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="surface p-5">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">
-              Total de atendimentos
-            </p>
-            <p className="mt-2 text-3xl font-semibold">
-              {(total.data ?? 0).toLocaleString("pt-BR")}
-            </p>
-          </div>
-          <div className="surface p-5">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Período inicial</p>
-            <p className="mt-2 text-3xl font-semibold">{formatar(periodo.data?.inicio)}</p>
-          </div>
-          <div className="surface p-5">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Período final</p>
-            <p className="mt-2 text-3xl font-semibold">{formatar(periodo.data?.fim)}</p>
-          </div>
-          <div className="surface p-5">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Ferramenta</p>
-            <p className="mt-2 text-3xl font-semibold">ASC</p>
-          </div>
-          <div className="surface col-span-full p-6 text-sm text-muted-foreground">
-            Indicadores executivos detalhados serão construídos nesta área nas próximas etapas.
-          </div>
-        </div>
+        <>
+          <Filters state={state} onChange={setState} />
+          <KpiCards filters={filters} />
+          <DashboardCharts filters={filters} />
+          <AtendimentosTable filters={filters} />
+        </>
       )}
     </>
   );

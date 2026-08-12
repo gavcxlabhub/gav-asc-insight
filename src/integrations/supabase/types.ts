@@ -261,6 +261,119 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_agrupado: {
+        Args: {
+          p_agente?: string
+          p_ativo_receptivo?: string
+          p_conta?: string
+          p_data_fim: string
+          p_data_inicio: string
+          p_dimensao: string
+          p_limite?: number
+          p_recorrencia?: string
+          p_servico?: string
+          p_status?: string
+          p_tipo?: string
+        }
+        Returns: {
+          humanos: number
+          receptivos: number
+          rotulo: string
+          total: number
+        }[]
+      }
+      get_atendimentos_paginado: {
+        Args: {
+          p_agente?: string
+          p_ativo_receptivo?: string
+          p_busca?: string
+          p_conta?: string
+          p_data_fim: string
+          p_data_inicio: string
+          p_pagina?: number
+          p_por_pagina?: number
+          p_recorrencia?: string
+          p_servico?: string
+          p_status?: string
+          p_tipo?: string
+        }
+        Returns: {
+          agente: string
+          ativo_receptivo: string
+          conta: string
+          contato: string
+          data_entrada: string
+          id: string
+          protocolo: string
+          recorrencia_origem: string
+          servico: string
+          status: string
+          telefone: string
+          tempo_atendimento: string
+          tempo_em_fila: string
+          tipo: string
+          total_count: number
+        }[]
+      }
+      get_evolucao_volume: {
+        Args: {
+          p_agente?: string
+          p_ativo_receptivo?: string
+          p_conta?: string
+          p_data_fim: string
+          p_data_inicio: string
+          p_granularidade?: string
+          p_recorrencia?: string
+          p_servico?: string
+          p_status?: string
+          p_tipo?: string
+        }
+        Returns: {
+          automaticos: number
+          humanos: number
+          periodo: string
+          total: number
+        }[]
+      }
+      get_filtro_valores: {
+        Args: { p_campo: string }
+        Returns: {
+          valor: string
+        }[]
+      }
+      get_kpis: {
+        Args: {
+          p_agente?: string
+          p_ativo_receptivo?: string
+          p_conta?: string
+          p_data_fim: string
+          p_data_inicio: string
+          p_recorrencia?: string
+          p_servico?: string
+          p_status?: string
+          p_tipo?: string
+        }
+        Returns: Json
+      }
+      get_recorrencia_periodo: {
+        Args: {
+          p_agente?: string
+          p_ativo_receptivo?: string
+          p_conta?: string
+          p_data_fim: string
+          p_data_inicio: string
+          p_granularidade?: string
+          p_servico?: string
+          p_status?: string
+          p_tipo?: string
+        }
+        Returns: {
+          periodo: string
+          rechamadas: number
+          recorrentes: number
+          reincidentes: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
