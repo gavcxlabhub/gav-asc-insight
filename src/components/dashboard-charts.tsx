@@ -40,6 +40,17 @@ const PALETA = [
   "#1C324B",
 ];
 
+const TOOLTIP = {
+  contentStyle: {
+    background: "#1C324B",
+    border: "1px solid #223B5A",
+    borderRadius: 8,
+    color: "#F3EEDF",
+  },
+  labelStyle: { color: "#F3EEDF" },
+  itemStyle: { color: "#F3EEDF" },
+} as const;
+
 const DIAS_SEMANA: Record<string, string> = {
   "1": "Seg",
   "2": "Ter",
@@ -110,7 +121,7 @@ function BarrasHorizontais({
         <CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.3} />
         <XAxis type="number" tick={{ fontSize: 11 }} />
         <YAxis type="category" dataKey="rotulo" width={150} tick={{ fontSize: 11 }} />
-        <Tooltip />
+        <Tooltip {...TOOLTIP} />
         <Bar dataKey="total" name="Atendimentos" fill={AZUL} radius={[0, 4, 4, 0]} />
       </BarChart>
     </ChartCard>
@@ -136,7 +147,7 @@ function Donut({
             <Cell key={i} fill={PALETA[i % PALETA.length]} />
           ))}
         </Pie>
-        <Tooltip />
+        <Tooltip {...TOOLTIP} />
         <Legend wrapperStyle={{ fontSize: 12 }} />
       </PieChart>
     </ChartCard>
@@ -178,7 +189,7 @@ function EvolucaoVolume({ filters }: { filters: DashboardFilters }) {
         <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
         <XAxis dataKey="periodo" tick={{ fontSize: 11 }} minTickGap={24} />
         <YAxis tick={{ fontSize: 11 }} />
-        <Tooltip />
+        <Tooltip {...TOOLTIP} />
         <Legend wrapperStyle={{ fontSize: 12 }} />
         <Line type="monotone" dataKey="total" name="Total" stroke={AZUL} strokeWidth={2} dot={false} />
         <Line
@@ -237,7 +248,7 @@ function RecorrenciaPorPeriodo({ filters }: { filters: DashboardFilters }) {
         <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
         <XAxis dataKey="periodo" tick={{ fontSize: 11 }} minTickGap={24} />
         <YAxis tick={{ fontSize: 11 }} />
-        <Tooltip />
+        <Tooltip {...TOOLTIP} />
         <Legend wrapperStyle={{ fontSize: 12 }} />
         <Bar dataKey="rechamadas" name="Rechamada" fill={AZUL} />
         <Bar dataKey="recorrentes" name="Recorrente" fill={DOURADO} />
@@ -256,7 +267,7 @@ function VolumePorHora({ filters }: { filters: DashboardFilters }) {
         <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
         <XAxis dataKey="hora" tick={{ fontSize: 11 }} />
         <YAxis tick={{ fontSize: 11 }} />
-        <Tooltip />
+        <Tooltip {...TOOLTIP} />
         <Line type="monotone" dataKey="total" name="Atendimentos" stroke={AZUL} strokeWidth={2} />
       </LineChart>
     </ChartCard>
@@ -275,7 +286,7 @@ function VolumePorDiaSemana({ filters }: { filters: DashboardFilters }) {
         <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
         <XAxis dataKey="dia" tick={{ fontSize: 11 }} />
         <YAxis tick={{ fontSize: 11 }} />
-        <Tooltip />
+        <Tooltip {...TOOLTIP} />
         <Bar dataKey="total" name="Atendimentos" fill={DOURADO} radius={[4, 4, 0, 0]} />
       </BarChart>
     </ChartCard>
