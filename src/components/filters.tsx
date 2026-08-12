@@ -243,7 +243,6 @@ export function Filters({ state, onChange }: FiltersProps) {
             { value: "Rechamada", label: "Rechamada" },
             { value: "Recorrente", label: "Recorrente" },
             { value: "Reincid", label: "Reincidente" },
-            { value: "Sem informação", label: "Sem informação" },
           ]}
         />
       </div>
