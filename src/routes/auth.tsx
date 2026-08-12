@@ -92,26 +92,26 @@ function AuthPage() {
 
   return (
     <div className="flex min-h-screen">
-      <div className="hidden flex-1 flex-col justify-between bg-primary p-12 text-primary-foreground lg:flex">
+      <div className="hidden flex-1 flex-col justify-between bg-card p-12 text-foreground lg:flex border-r border-border">
         <div className="flex items-center gap-3">
           <div className="flex size-11 items-center justify-center rounded-md bg-gold text-sm font-extrabold text-gold-foreground">
             GAV
           </div>
           <div>
             <p className="text-base font-semibold">ASC Analytics</p>
-            <p className="text-xs text-primary-foreground/70">GAV Resorts</p>
+            <p className="text-xs text-muted-foreground">GAV Resorts</p>
           </div>
         </div>
         <div className="max-w-md space-y-4">
           <h2 className="text-3xl font-semibold leading-tight">
             Inteligência de atendimento <span className="text-gold">WhatsApp</span>
           </h2>
-          <p className="text-sm text-primary-foreground/80">
+          <p className="text-sm text-muted-foreground">
             Consolide os atendimentos exportados da plataforma ASC e acompanhe recorrência, contas,
             serviços, agentes e horários de pico em um painel executivo único.
           </p>
         </div>
-        <p className="text-xs text-primary-foreground/60">
+        <p className="text-xs text-muted-foreground">
           Ambiente corporativo · acesso controlado
         </p>
       </div>
