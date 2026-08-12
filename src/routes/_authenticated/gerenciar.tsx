@@ -17,7 +17,22 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { importacoesQuery, totalAtendimentosQuery } from "@/lib/analytics-queries";
+import {
+  importacoesQuery,
+  periodoBaseQuery,
+  totalAtendimentosQuery,
+} from "@/lib/analytics-queries";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/_authenticated/gerenciar")({
   head: () => ({
@@ -42,6 +57,7 @@ function GerenciarBase() {
   const queryClient = useQueryClient();
   const importacoes = useQuery(importacoesQuery());
   const total = useQuery(totalAtendimentosQuery());
+  const periodo = useQuery(periodoBaseQuery());
 
   const remover = useMutation({
     mutationFn: async (id: string) => {
@@ -78,6 +94,35 @@ function GerenciarBase() {
         description={`Histórico de importações · ${(total.data ?? 0).toLocaleString("pt-BR")} atendimentos armazenados.`}
         actions={user ? <ImportDialog userId={user.id} /> : null}
       />
+
+      <div className="mb-6 grid gap-4 sm:grid-cols-3">
+        <div className="surface p-5">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Total de registros</p>
+          <p className="mt-2 text-2xl font-semibold">
+            {(total.data ?? 0).toLocaleString("pt-BR")}
+          </p>
+        </div>
+        <div className="surface p-5">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Período coberto</p>
+          <p className="mt-2 text-2xl font-semibold">
+            {periodo.data?.inicio
+              ? `${new Date(periodo.data.inicio).toLocaleDateString("pt-BR")} → ${
+                  periodo.data.fim
+                    ? new Date(periodo.data.fim).toLocaleDateString("pt-BR")
+                    : "—"
+                }`
+              : "—"}
+          </p>
+        </div>
+        <div className="surface p-5">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Última importação</p>
+          <p className="mt-2 text-2xl font-semibold">
+            {lista[0]?.created_at
+              ? new Date(lista[0].created_at).toLocaleString("pt-BR")
+              : "—"}
+          </p>
+        </div>
+      </div>
 
       {lista.length === 0 ? (
         <EmptyState
@@ -118,15 +163,34 @@ function GerenciarBase() {
                   <TableCell className="text-right">{imp.duplicados ?? 0}</TableCell>
                   <TableCell className="text-right">{imp.invalidos ?? 0}</TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label="Remover importação"
-                      onClick={() => remover.mutate(imp.id)}
-                      disabled={remover.isPending}
-                    >
-                      <Trash2 className="size-4 text-destructive" />
-                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Remover importação"
+                          disabled={remover.isPending}
+                        >
+                          <Trash2 className="size-4 text-destructive" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Excluir importação?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Todos os atendimentos vinculados a{" "}
+                            {imp.nome_arquivo ?? "este arquivo"} serão removidos
+                            permanentemente da base.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => remover.mutate(imp.id)}>
+                            Excluir
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </TableCell>
                 </TableRow>
               ))}
