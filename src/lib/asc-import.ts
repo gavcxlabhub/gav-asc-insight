@@ -171,10 +171,9 @@ async function buildRow(
   const text = (field: string): string | null => {
     const v = raw[field];
     if (v === null || v === undefined) return null;
-    const s = String(v).trim();
+    const s = String(v).trim().replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "");
     return s === "" ? null : s;
   };
-
   const telefone = raw["telefone"] === undefined ? null : String(raw["telefone"]).trim();
   const dataEntrada = toIsoDate(raw["data_entrada"]);
   const protocolo = text("protocolo");
