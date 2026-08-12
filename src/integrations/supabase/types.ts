@@ -315,6 +315,34 @@ export type Database = {
           total_count: number
         }[]
       }
+      get_detalhes_por_dimensao: {
+        Args: {
+          p_agente?: string
+          p_ativo_receptivo?: string
+          p_conta?: string
+          p_data_fim: string
+          p_data_inicio: string
+          p_dimensao: string
+          p_limite?: number
+          p_servico?: string
+          p_status?: string
+          p_tipo?: string
+        }
+        Returns: {
+          ativos: number
+          automaticos: number
+          humanos: number
+          mistos: number
+          receptivos: number
+          rechamadas: number
+          recorrentes: number
+          reincidentes: number
+          rotulo: string
+          tma_segundos: number
+          tme_segundos: number
+          total: number
+        }[]
+      }
       get_evolucao_volume: {
         Args: {
           p_agente?: string
@@ -339,6 +367,20 @@ export type Database = {
         Args: { p_campo: string }
         Returns: {
           valor: string
+        }[]
+      }
+      get_heatmap: {
+        Args: {
+          p_ativo_receptivo?: string
+          p_conta?: string
+          p_data_fim: string
+          p_data_inicio: string
+          p_tipo?: string
+        }
+        Returns: {
+          dia_semana: string
+          hora: string
+          total: number
         }[]
       }
       get_kpis: {
@@ -372,6 +414,27 @@ export type Database = {
           rechamadas: number
           recorrentes: number
           reincidentes: number
+        }[]
+      }
+      get_recorrencia_por_dimensao: {
+        Args: {
+          p_agente?: string
+          p_ativo_receptivo?: string
+          p_conta?: string
+          p_data_fim: string
+          p_data_inicio: string
+          p_dimensao: string
+          p_limite?: number
+          p_servico?: string
+          p_status?: string
+          p_tipo?: string
+          p_tipo_recorrencia: string
+        }
+        Returns: {
+          com_recorrencia: number
+          percentual: number
+          rotulo: string
+          total: number
         }[]
       }
       has_role: {
