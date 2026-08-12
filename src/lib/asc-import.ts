@@ -235,7 +235,10 @@ export async function importAscFile(
 ): Promise<ImportSummary> {
   onProgress({ stage: "lendo", processed: 0, total: 0 });
 
-  const buffer = await file.arrayBuffer();
+  const rawBuffer = await file.arrayBuffer();
+const uint8 = new Uint8Array(rawBuffer);
+const cleaned = uint8.filter(b => b !== 0x00);
+const buffer = cleaned.buffer;
   const workbook = XLSX.read(buffer, { type: "array", cellDates: false, raw: true });
   const sheetName = workbook.SheetNames[0];
   if (!sheetName) throw new Error("Arquivo sem planilhas.");
