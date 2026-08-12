@@ -18,7 +18,7 @@ interface CardProps {
 function KpiCard({ titulo, valor, detalhe, loading }: CardProps) {
   return (
     <div className="surface p-5">
-      <p className="text-xs uppercase tracking-wide text-muted-foreground">{titulo}</p>
+      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{titulo}</p>
       {loading ? (
         <div className="mt-3 space-y-2">
           <Skeleton className="h-8 w-24" />
@@ -26,7 +26,7 @@ function KpiCard({ titulo, valor, detalhe, loading }: CardProps) {
         </div>
       ) : (
         <>
-          <p className="mt-2 text-3xl font-semibold text-foreground">{valor}</p>
+          <p className="mt-2 font-display text-3xl font-bold text-foreground">{valor}</p>
           {detalhe ? <p className="mt-1 text-xs text-muted-foreground">{detalhe}</p> : null}
         </>
       )}

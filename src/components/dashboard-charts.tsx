@@ -27,9 +27,18 @@ import {
   type Granularidade,
 } from "@/lib/dashboard-queries";
 
-const AZUL = "#012e59";
-const DOURADO = "#c9a227";
-const PALETA = [AZUL, DOURADO, "#3f6fa3", "#8a6d1f", "#7fa3c9", "#d9c26b", "#1f4a7a", "#b39434"];
+const AZUL = "#C9A968";
+const DOURADO = "#A9B4C4";
+const PALETA = [
+  "#C9A968",
+  "#A9B4C4",
+  "#B8935A",
+  "#6E8098",
+  "#E0CE9E",
+  "#8C7440",
+  "#F3EEDF",
+  "#1C324B",
+];
 
 const DIAS_SEMANA: Record<string, string> = {
   "1": "Seg",
@@ -54,7 +63,7 @@ function ChartCard({ titulo, loading, vazio, acoes, children, altura = 280 }: Ch
   return (
     <div className="surface p-5">
       <div className="mb-4 flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-foreground">{titulo}</h3>
+        <h3 className="font-display text-sm font-bold text-foreground">{titulo}</h3>
         {acoes}
       </div>
       {loading ? (
@@ -184,7 +193,7 @@ function EvolucaoVolume({ filters }: { filters: DashboardFilters }) {
           type="monotone"
           dataKey="automaticos"
           name="Automáticos"
-          stroke="#7fa3c9"
+          stroke="#B8935A"
           strokeWidth={2}
           dot={false}
         />
@@ -232,7 +241,7 @@ function RecorrenciaPorPeriodo({ filters }: { filters: DashboardFilters }) {
         <Legend wrapperStyle={{ fontSize: 12 }} />
         <Bar dataKey="rechamadas" name="Rechamada" fill={AZUL} />
         <Bar dataKey="recorrentes" name="Recorrente" fill={DOURADO} />
-        <Bar dataKey="reincidentes" name="Reincidente" fill="#7fa3c9" />
+        <Bar dataKey="reincidentes" name="Reincidente" fill="#B8935A" />
       </BarChart>
     </ChartCard>
   );
