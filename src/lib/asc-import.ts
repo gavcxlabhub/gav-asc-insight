@@ -227,7 +227,7 @@ async function buildRow(
   };
 }
 
-const BATCH_SIZE = 500;
+const BATCH_SIZE = 200;
 
 export async function importAscFile(
   file: File,
@@ -284,7 +284,7 @@ export async function importAscFile(
         parsed.push(built);
       }
     }
-    if (i % 200 === 0) {
+    if (i % 100 === 0) {
       onProgress({ stage: "validando", processed: i, total: dataRows.length });
       await new Promise((r) => setTimeout(r, 0));
     }
@@ -324,7 +324,7 @@ export async function importAscFile(
 
   onProgress({ stage: "salvando", processed: 0, total: novosRows.length });
 
-  for (let i = 0; i < novosRows.length; i += BATCH_SIZE) {
+    for (let i = 0; i < novosRows.length; i += BATCH_SIZE) {
     const batch = novosRows.slice(i, i + BATCH_SIZE).map((r) => ({
       ...r,
       importacao_id: importacaoId,
@@ -333,12 +333,14 @@ export async function importAscFile(
       .from("atendimentos")
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .upsert(batch as any, { onConflict: "source_record_key", ignoreDuplicates: true });
-    if (error) throw error;
+    if (error) throw new Error(`[${(error as any).code}] ${error.message}`);
     onProgress({
       stage: "salvando",
       processed: Math.min(i + BATCH_SIZE, novosRows.length),
       total: novosRows.length,
     });
+    // Pausa entre lotes para não sobrecarregar
+    await new Promise((r) => setTimeout(r, 50));
   }
 
   // Atualiza o registro com os totais finais
