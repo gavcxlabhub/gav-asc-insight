@@ -7,7 +7,6 @@ IDENTIDADE VISUAL
 Paleta: azul escuro #012e59, branco, dourado #c9a227 para destaques, tons neutros para fundos
 
 Aparência executiva de Business Intelligence
-
 Responsivo para desktop e notebook
 
 Fonte principal: Inter
