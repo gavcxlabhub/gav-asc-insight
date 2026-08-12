@@ -82,15 +82,23 @@ export function useDashboardFilters() {
   return { state, setState, filters };
 }
 
+interface Opcao {
+  value: string;
+  label: string;
+}
+
 interface SelectFiltroProps {
   label: string;
   value: string | null;
   onChange: (value: string | null) => void;
-  options: string[];
+  options: (string | Opcao)[];
   loading?: boolean;
 }
 
 function SelectFiltro({ label, value, onChange, options, loading }: SelectFiltroProps) {
+  const opcoes: Opcao[] = options.map((o) =>
+    typeof o === "string" ? { value: o, label: o } : o,
+  );
   return (
     <div className="space-y-1.5">
       <Label className="text-xs text-muted-foreground">{label}</Label>
@@ -103,9 +111,9 @@ function SelectFiltro({ label, value, onChange, options, loading }: SelectFiltro
         </SelectTrigger>
         <SelectContent className="max-h-72">
           <SelectItem value={TODOS}>Todos</SelectItem>
-          {options.map((o) => (
-            <SelectItem key={o} value={o}>
-              {o}
+          {opcoes.map((o) => (
+            <SelectItem key={o.value} value={o.value}>
+              {o.label}
             </SelectItem>
           ))}
         </SelectContent>
