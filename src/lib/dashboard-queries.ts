@@ -203,3 +203,94 @@ export function percentual(parte: number, total: number) {
   if (!total) return "0,0%";
   return `${((parte / total) * 100).toFixed(1).replace(".", ",")}%`;
 }
+
+/* ---------- Recorrência por dimensão (conta / serviço / agente) ---------- */
+
+export type DimensaoDetalhe = "conta" | "servico" | "agente";
+export type TipoRecorrencia = "rechamada" | "recorrente" | "reincid";
+
+export interface RecorrenciaDimensaoLinha {
+  rotulo: string;
+  total: number;
+  com_recorrencia: number;
+  percentual: number | null;
+}
+
+function filtrosSemRecorrencia(f: DashboardFilters): RpcArgs {
+  const args = filtrosRpcArgs(f);
+  delete args["p_recorrencia"];
+  return args;
+}
+
+export const recorrenciaDimensaoQuery = (
+  f: DashboardFilters,
+  dimensao: DimensaoDetalhe,
+  tipoRecorrencia: TipoRecorrencia,
+  limite = 10,
+) =>
+  queryOptions({
+    queryKey: ["recorrencia-dimensao", dimensao, tipoRecorrencia, limite, f],
+    staleTime: STALE_TIME,
+    queryFn: () =>
+      rpc<RecorrenciaDimensaoLinha[]>("get_recorrencia_por_dimensao", {
+        ...filtrosSemRecorrencia(f),
+        p_dimensao: dimensao,
+        p_tipo_recorrencia: tipoRecorrencia,
+        p_limite: limite,
+      }),
+  });
+
+/* ---------- Detalhes por dimensão ---------- */
+
+export interface DetalheDimensaoLinha {
+  rotulo: string;
+  total: number;
+  humanos: number;
+  mistos: number;
+  automaticos: number;
+  ativos: number;
+  receptivos: number;
+  rechamadas: number;
+  recorrentes: number;
+  reincidentes: number;
+  tme_segundos: number | null;
+  tma_segundos: number | null;
+}
+
+export const detalhesDimensaoQuery = (
+  f: DashboardFilters,
+  dimensao: DimensaoDetalhe,
+  limite = 50,
+) =>
+  queryOptions({
+    queryKey: ["detalhes-dimensao", dimensao, limite, f],
+    staleTime: STALE_TIME,
+    queryFn: () =>
+      rpc<DetalheDimensaoLinha[]>("get_detalhes_por_dimensao", {
+        ...filtrosSemRecorrencia(f),
+        p_dimensao: dimensao,
+        p_limite: limite,
+      }),
+  });
+
+/* ---------- Heatmap dia da semana x hora ---------- */
+
+export interface HeatmapCelula {
+  dia_semana: string;
+  hora: string;
+  total: number;
+}
+
+export const heatmapQuery = (f: DashboardFilters) =>
+  queryOptions({
+    queryKey: ["heatmap", f],
+    staleTime: STALE_TIME,
+    queryFn: () =>
+      rpc<HeatmapCelula[]>("get_heatmap", {
+        p_data_inicio: f.dataInicio,
+        p_data_fim: f.dataFim,
+        p_conta: f.conta,
+        p_tipo: f.tipo,
+        p_ativo_receptivo: f.ativoReceptivo,
+      }),
+  });
