@@ -142,10 +142,13 @@ export function normalizePhone(value: unknown): string {
 
 export function normalizeAtivoReceptivo(value: unknown): string | null {
   if (!value) return null;
-  const n = normalizeHeader(String(value));
-  if (!n) return null;
-  if (n.startsWith("a")) return "Ativo";
-  if (n.startsWith("r")) return "Receptivo";
+  const v = String(value)
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+  if (v === "ativo" || v === "ativa") return "Ativo";
+  if (v === "receptivo" || v === "receptiva") return "Receptivo";
   return null;
 }
 
