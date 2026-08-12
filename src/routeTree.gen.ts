@@ -14,9 +14,11 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedAgentesRouteImport } from './routes/_authenticated/agentes'
 import { Route as AuthenticatedContasRouteImport } from './routes/_authenticated/contas'
+import { Route as AuthenticatedGerenciarRouteImport } from './routes/_authenticated/gerenciar'
 import { Route as AuthenticatedHorariosRouteImport } from './routes/_authenticated/horarios'
 import { Route as AuthenticatedRecorrenciaRouteImport } from './routes/_authenticated/recorrencia'
 import { Route as AuthenticatedServicosRouteImport } from './routes/_authenticated/servicos'
+import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated/usuarios'
 
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
@@ -42,6 +44,11 @@ const AuthenticatedContasRoute = AuthenticatedContasRouteImport.update({
   path: '/contas',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedGerenciarRoute = AuthenticatedGerenciarRouteImport.update({
+  id: '/gerenciar',
+  path: '/gerenciar',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedHorariosRoute = AuthenticatedHorariosRouteImport.update({
   id: '/horarios',
   path: '/horarios',
@@ -58,23 +65,32 @@ const AuthenticatedServicosRoute = AuthenticatedServicosRouteImport.update({
   path: '/servicos',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedUsuariosRoute = AuthenticatedUsuariosRouteImport.update({
+  id: '/usuarios',
+  path: '/usuarios',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
   '/agentes': typeof AuthenticatedAgentesRoute
   '/contas': typeof AuthenticatedContasRoute
+  '/gerenciar': typeof AuthenticatedGerenciarRoute
   '/horarios': typeof AuthenticatedHorariosRoute
   '/recorrencia': typeof AuthenticatedRecorrenciaRoute
   '/servicos': typeof AuthenticatedServicosRoute
+  '/usuarios': typeof AuthenticatedUsuariosRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/agentes': typeof AuthenticatedAgentesRoute
   '/contas': typeof AuthenticatedContasRoute
+  '/gerenciar': typeof AuthenticatedGerenciarRoute
   '/horarios': typeof AuthenticatedHorariosRoute
   '/recorrencia': typeof AuthenticatedRecorrenciaRoute
   '/servicos': typeof AuthenticatedServicosRoute
+  '/usuarios': typeof AuthenticatedUsuariosRoute
   '/': typeof AuthenticatedIndexRoute
 }
 export interface FileRoutesById {
@@ -83,9 +99,11 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/agentes': typeof AuthenticatedAgentesRoute
   '/_authenticated/contas': typeof AuthenticatedContasRoute
+  '/_authenticated/gerenciar': typeof AuthenticatedGerenciarRoute
   '/_authenticated/horarios': typeof AuthenticatedHorariosRoute
   '/_authenticated/recorrencia': typeof AuthenticatedRecorrenciaRoute
   '/_authenticated/servicos': typeof AuthenticatedServicosRoute
+  '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
 }
 export interface FileRouteTypes {
@@ -95,17 +113,21 @@ export interface FileRouteTypes {
     | '/auth'
     | '/agentes'
     | '/contas'
+    | '/gerenciar'
     | '/horarios'
     | '/recorrencia'
     | '/servicos'
+    | '/usuarios'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
     | '/agentes'
     | '/contas'
+    | '/gerenciar'
     | '/horarios'
     | '/recorrencia'
     | '/servicos'
+    | '/usuarios'
     | '/'
   id:
     | '__root__'
@@ -113,9 +135,11 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/agentes'
     | '/_authenticated/contas'
+    | '/_authenticated/gerenciar'
     | '/_authenticated/horarios'
     | '/_authenticated/recorrencia'
     | '/_authenticated/servicos'
+    | '/_authenticated/usuarios'
     | '/_authenticated/'
   fileRoutesById: FileRoutesById
 }
@@ -161,6 +185,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedContasRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/gerenciar': {
+      id: '/_authenticated/gerenciar'
+      path: '/gerenciar'
+      fullPath: '/gerenciar'
+      preLoaderRoute: typeof AuthenticatedGerenciarRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/horarios': {
       id: '/_authenticated/horarios'
       path: '/horarios'
@@ -182,24 +213,35 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedServicosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/usuarios': {
+      id: '/_authenticated/usuarios'
+      path: '/usuarios'
+      fullPath: '/usuarios'
+      preLoaderRoute: typeof AuthenticatedUsuariosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAgentesRoute: typeof AuthenticatedAgentesRoute
   AuthenticatedContasRoute: typeof AuthenticatedContasRoute
+  AuthenticatedGerenciarRoute: typeof AuthenticatedGerenciarRoute
   AuthenticatedHorariosRoute: typeof AuthenticatedHorariosRoute
   AuthenticatedRecorrenciaRoute: typeof AuthenticatedRecorrenciaRoute
   AuthenticatedServicosRoute: typeof AuthenticatedServicosRoute
+  AuthenticatedUsuariosRoute: typeof AuthenticatedUsuariosRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAgentesRoute: AuthenticatedAgentesRoute,
   AuthenticatedContasRoute: AuthenticatedContasRoute,
+  AuthenticatedGerenciarRoute: AuthenticatedGerenciarRoute,
   AuthenticatedHorariosRoute: AuthenticatedHorariosRoute,
   AuthenticatedRecorrenciaRoute: AuthenticatedRecorrenciaRoute,
   AuthenticatedServicosRoute: AuthenticatedServicosRoute,
+  AuthenticatedUsuariosRoute: AuthenticatedUsuariosRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
 
