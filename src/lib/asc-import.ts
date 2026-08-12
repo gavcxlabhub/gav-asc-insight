@@ -223,7 +223,7 @@ async function buildRow(
     atendimento_original: text("atendimento_original"),
     ferramenta: text("ferramenta") ?? "ASC",
     arquivo_origem: arquivo,
-    dados_origem: raw as Record<string, unknown>,
+    dados_origem: null,
   };
 }
 
