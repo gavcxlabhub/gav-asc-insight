@@ -239,7 +239,12 @@ export function Filters({ state, onChange }: FiltersProps) {
           label="Recorrência"
           value={state.recorrencia}
           onChange={(v) => set({ recorrencia: v })}
-          options={["Rechamada", "Recorrente", "Reincid"]}
+          options={[
+            { value: "Rechamada", label: "Rechamada" },
+            { value: "Recorrente", label: "Recorrente" },
+            { value: "Reincid", label: "Reincidente" },
+            { value: "Sem informação", label: "Sem informação" },
+          ]}
         />
       </div>
 
