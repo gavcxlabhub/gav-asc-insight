@@ -46,7 +46,7 @@ export function DimensaoPage({
         dimensao={dimensao}
         rotuloColuna={rotuloColuna}
         colunas={COLUNAS}
-        excluirVazios={excluirVazios}
+        excluirVazios={excluirVazios ?? false}
       />
     </>
   );
