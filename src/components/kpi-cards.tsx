@@ -1,5 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   formatarDuracao,
@@ -12,10 +11,11 @@ interface CardProps {
   titulo: string;
   valor: string;
   detalhe?: string;
+  detalhe2?: string;
   loading: boolean;
 }
 
-function KpiCard({ titulo, valor, detalhe, loading }: CardProps) {
+function KpiCard({ titulo, valor, detalhe, detalhe2, loading }: CardProps) {
   return (
     <div className="surface p-5">
       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{titulo}</p>
@@ -28,6 +28,7 @@ function KpiCard({ titulo, valor, detalhe, loading }: CardProps) {
         <>
           <p className="mt-2 font-display text-3xl font-bold text-foreground">{valor}</p>
           {detalhe ? <p className="mt-1 text-xs text-muted-foreground">{detalhe}</p> : null}
+          {detalhe2 ? <p className="mt-0.5 text-xs text-amber-400/80">{detalhe2}</p> : null}
         </>
       )}
     </div>
@@ -81,20 +82,23 @@ export function KpiCards({ filters }: { filters: DashboardFilters }) {
       />
       <KpiCard
         titulo="Rechamadas"
-        valor={n(data?.rechamadas)}
-        detalhe={`${percentual(data?.rechamadas ?? 0, total)} do período`}
+        valor={n(data?.sys_rechamadas)}
+        detalhe={`${percentual(data?.sys_rechamadas ?? 0, total)} do período (sistema)`}
+        detalhe2={`ASC informa: ${n(data?.asc_rechamadas)}`}
         loading={isPending}
       />
       <KpiCard
         titulo="Recorrentes"
-        valor={n(data?.recorrentes)}
-        detalhe={`${percentual(data?.recorrentes ?? 0, total)} do período`}
+        valor={n(data?.sys_recorrentes)}
+        detalhe={`${percentual(data?.sys_recorrentes ?? 0, total)} do período (sistema)`}
+        detalhe2={`ASC informa: ${n(data?.asc_recorrentes)}`}
         loading={isPending}
       />
       <KpiCard
         titulo="Reincidentes"
-        valor={n(data?.reincidentes)}
-        detalhe={`${percentual(data?.reincidentes ?? 0, total)} do período`}
+        valor={n(data?.sys_reincidentes)}
+        detalhe={`${percentual(data?.sys_reincidentes ?? 0, total)} do período (sistema)`}
+        detalhe2={`ASC informa: ${n(data?.asc_reincidentes)}`}
         loading={isPending}
       />
     </div>
