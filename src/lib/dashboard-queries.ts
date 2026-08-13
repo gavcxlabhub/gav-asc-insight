@@ -48,6 +48,7 @@ export interface Kpis {
   humanos: number;
   mistos: number;
   automaticos: number;
+  com_humano: number;
   ativos: number;
   receptivos: number;
   rechamadas: number;
