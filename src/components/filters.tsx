@@ -220,7 +220,10 @@ export function Filters({ state, onChange }: FiltersProps) {
           label="Tipo"
           value={state.tipo}
           onChange={(v) => set({ tipo: v })}
-          options={["Humano", "Misto", "Automático"]}
+          options={[
+            { value: "Com Humano", label: "Com Humano" },
+            { value: "Automático", label: "Automático" },
+          ]}
         />
         <SelectFiltro
           label="Ativo/Receptivo"
