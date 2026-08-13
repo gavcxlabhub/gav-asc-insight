@@ -8,6 +8,7 @@ import {
   Wrench,
   Users,
   Clock,
+  Activity,
   DatabaseZap,
   ShieldCheck,
   LogOut,
@@ -37,6 +38,7 @@ const NAV = [
   { to: "/servicos", label: "Serviços", icon: Wrench, adminOnly: false },
   { to: "/agentes", label: "Agentes", icon: Users, adminOnly: false },
   { to: "/horarios", label: "Horários de Pico", icon: Clock, adminOnly: false },
+  { to: "/operacional", label: "Operacional", icon: Activity, adminOnly: false },
   { to: "/gerenciar", label: "Gerenciar Base", icon: DatabaseZap, adminOnly: true },
   { to: "/usuarios", label: "Gerenciar Usuários", icon: ShieldCheck, adminOnly: true },
 ] as const;
@@ -128,63 +130,4 @@ export function AppShell({ children }: { children: ReactNode }) {
                 temBase ? "text-success" : "text-muted-foreground",
               )}
             >
-              <span
-                className={cn(
-                  "size-1.5 rounded-full",
-                  temBase ? "bg-success" : "bg-muted-foreground",
-                )}
-              />
-              {temBase
-                ? `Base carregada · ${(totalQuery.data ?? 0).toLocaleString("pt-BR")} atendimentos`
-                : "Nenhuma base carregada"}
-            </Badge>
-          </div>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="gap-2 px-2">
-                <span className="flex size-8 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
-                  {(profile?.nome ?? profile?.email ?? "?").slice(0, 2).toUpperCase()}
-                </span>
-                <span className="hidden text-left sm:block">
-                  <span className="block text-sm font-medium leading-tight">
-                    {profile?.nome ?? profile?.email}
-                  </span>
-                  <span className="block text-[11px] capitalize text-muted-foreground">
-                    {profile?.role === "admin" ? "Administrador" : "Visualizador"}
-                  </span>
-                </span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel className="space-y-0.5">
-                <span className="block text-sm">{profile?.nome ?? "Usuário"}</span>
-                <span className="block text-xs font-normal text-muted-foreground">
-                  {profile?.email}
-                </span>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={() => void handleSignOut()}>
-                <LogOut className="mr-2 size-4" />
-                Sair
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </header>
-
-        {mobileOpen ? (
-          <button
-            type="button"
-            aria-label="Fechar menu"
-            className="fixed inset-0 z-30 bg-foreground/30 lg:hidden"
-            onClick={() => setMobileOpen(false)}
-          >
-            <X className="sr-only" />
-          </button>
-        ) : null}
-
-        <main className="mx-auto w-full max-w-[1400px] px-4 py-6 lg:px-8 lg:py-8">{children}</main>
-      </div>
-    </div>
-  );
-}
+              
