@@ -33,11 +33,13 @@ import {
 function CardRecorrencia({
   titulo,
   valor,
+  valorAsc,
   total,
   loading,
 }: {
   titulo: string;
   valor: number;
+  valorAsc: number;
   total: number;
   loading: boolean;
 }) {
@@ -56,7 +58,10 @@ function CardRecorrencia({
             {valor.toLocaleString("pt-BR")}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            {pct.toFixed(1).replace(".", ",")}% do total
+            {pct.toFixed(1).replace(".", ",")}% do total (sistema)
+          </p>
+          <p className="mt-0.5 text-xs text-amber-400/80">
+            ASC informa: {valorAsc.toLocaleString("pt-BR")}
           </p>
         </>
       )}
@@ -113,19 +118,22 @@ export function RecorrenciaView({ filters }: { filters: DashboardFilters }) {
       <div className="grid gap-4 sm:grid-cols-3">
         <CardRecorrencia
           titulo="Rechamadas"
-          valor={kpis.data?.rechamadas ?? 0}
+          valor={kpis.data?.sys_rechamadas ?? 0}
+          valorAsc={kpis.data?.asc_rechamadas ?? 0}
           total={total}
           loading={kpis.isPending}
         />
         <CardRecorrencia
           titulo="Recorrentes"
-          valor={kpis.data?.recorrentes ?? 0}
+          valor={kpis.data?.sys_recorrentes ?? 0}
+          valorAsc={kpis.data?.asc_recorrentes ?? 0}
           total={total}
           loading={kpis.isPending}
         />
         <CardRecorrencia
           titulo="Reincidentes"
-          valor={kpis.data?.reincidentes ?? 0}
+          valor={kpis.data?.sys_reincidentes ?? 0}
+          valorAsc={kpis.data?.asc_reincidentes ?? 0}
           total={total}
           loading={kpis.isPending}
         />
