@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Building2 } from "lucide-react";
 
-import { PlaceholderPage } from "@/components/placeholder-page";
+import { DimensaoPage } from "@/components/dimensao-page";
 
 export const Route = createFileRoute("/_authenticated/contas")({
   head: () => ({
@@ -16,14 +15,16 @@ export const Route = createFileRoute("/_authenticated/contas")({
         property: "og:description",
         content: "Volume e desempenho de atendimentos por conta e departamento.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: () => (
-    <PlaceholderPage
-      title="Contas / Departamentos"
-      description="Distribuição dos atendimentos entre as contas e departamentos da operação."
-      icon={Building2}
-      nota="A visão comparativa por conta será construída nesta área."
+    <DimensaoPage
+      titulo="Contas / Departamentos"
+      descricao="Distribuição dos atendimentos entre as contas e departamentos da operação."
+      dimensao="conta"
+      rotuloColuna="Conta"
     />
   ),
 });

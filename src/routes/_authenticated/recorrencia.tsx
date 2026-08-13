@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Repeat2 } from "lucide-react";
 
-import { PlaceholderPage } from "@/components/placeholder-page";
+import { PageHeader } from "@/components/page-header";
+import { Filters, useDashboardFilters } from "@/components/filters";
+import { RecorrenciaView } from "@/components/recorrencia-view";
 
 export const Route = createFileRoute("/_authenticated/recorrencia")({
   head: () => ({
@@ -16,14 +17,23 @@ export const Route = createFileRoute("/_authenticated/recorrencia")({
         property: "og:description",
         content: "Análise de recorrência de contatos nos atendimentos WhatsApp.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: () => (
-    <PlaceholderPage
-      title="Recorrência"
-      description="Comportamento de retorno dos contatos, preservando a recorrência original da ASC."
-      icon={Repeat2}
-      nota="Os indicadores de recorrência serão construídos nesta área a partir do campo original da ASC."
-    />
-  ),
+  component: RecorrenciaPage,
 });
+
+function RecorrenciaPage() {
+  const { state, setState, filters } = useDashboardFilters();
+  return (
+    <>
+      <PageHeader
+        title="Recorrência"
+        description="Comportamento de retorno dos contatos, preservando a recorrência original da ASC."
+      />
+      <Filters state={state} onChange={setState} />
+      <RecorrenciaView filters={filters} />
+    </>
+  );
+}

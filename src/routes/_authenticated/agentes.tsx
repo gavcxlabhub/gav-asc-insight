@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Users } from "lucide-react";
 
-import { PlaceholderPage } from "@/components/placeholder-page";
+import { DimensaoPage } from "@/components/dimensao-page";
 
 export const Route = createFileRoute("/_authenticated/agentes")({
   head: () => ({
@@ -16,14 +15,17 @@ export const Route = createFileRoute("/_authenticated/agentes")({
         property: "og:description",
         content: "Produtividade e tempos de resposta por agente.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: () => (
-    <PlaceholderPage
-      title="Agentes"
-      description="Desempenho individual da equipe de atendimento."
-      icon={Users}
-      nota="Os indicadores de produtividade por agente serão construídos nesta área."
+    <DimensaoPage
+      titulo="Agentes"
+      descricao="Desempenho individual da equipe de atendimento."
+      dimensao="agente"
+      rotuloColuna="Agente"
+      excluirVazios
     />
   ),
 });

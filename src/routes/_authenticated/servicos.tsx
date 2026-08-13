@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Wrench } from "lucide-react";
 
-import { PlaceholderPage } from "@/components/placeholder-page";
+import { DimensaoPage } from "@/components/dimensao-page";
 
 export const Route = createFileRoute("/_authenticated/servicos")({
   head: () => ({
@@ -16,14 +15,16 @@ export const Route = createFileRoute("/_authenticated/servicos")({
         property: "og:description",
         content: "Análise dos serviços demandados nos atendimentos WhatsApp.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: () => (
-    <PlaceholderPage
-      title="Serviços"
-      description="Demanda por tipo de serviço e sua evolução ao longo do período."
-      icon={Wrench}
-      nota="Os rankings e séries por serviço serão construídos nesta área."
+    <DimensaoPage
+      titulo="Serviços"
+      descricao="Demanda por tipo de serviço e sua evolução ao longo do período."
+      dimensao="servico"
+      rotuloColuna="Serviço"
     />
   ),
 });
