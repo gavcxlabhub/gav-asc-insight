@@ -20,6 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import {
   agrupadoQuery,
+  agrupadoTipoQuery,
   evolucaoQuery,
   recorrenciaPeriodoQuery,
   type DashboardFilters,
@@ -141,6 +142,24 @@ function Donut({
   const dados = (data ?? []).map((d) => ({ name: d.rotulo, value: Number(d.total) }));
   return (
     <ChartCard titulo={titulo} loading={isPending} vazio={dados.length === 0}>
+      <PieChart>
+        <Pie data={dados} dataKey="value" nameKey="name" innerRadius={55} outerRadius={95}>
+          {dados.map((_, i) => (
+            <Cell key={i} fill={PALETA[i % PALETA.length]} />
+          ))}
+        </Pie>
+        <Tooltip {...TOOLTIP} />
+        <Legend wrapperStyle={{ fontSize: 12 }} />
+      </PieChart>
+    </ChartCard>
+  );
+}
+
+function DonutTipo({ filters }: { filters: DashboardFilters }) {
+  const { data, isPending } = useQuery(agrupadoTipoQuery(filters));
+  const dados = (data ?? []).map((d) => ({ name: d.rotulo, value: Number(d.total) }));
+  return (
+    <ChartCard titulo="Com Humano × Automático" loading={isPending} vazio={dados.length === 0}>
       <PieChart>
         <Pie data={dados} dataKey="value" nameKey="name" innerRadius={55} outerRadius={95}>
           {dados.map((_, i) => (
@@ -306,7 +325,7 @@ export function DashboardCharts({ filters }: { filters: DashboardFilters }) {
         dimensao="servico"
         limite={10}
       />
-      <Donut titulo="Com Humano × Automático" filters={filters} dimensao="tipo" />
+      <DonutTipo filters={filters} />
       <Donut titulo="Ativo × Receptivo" filters={filters} dimensao="ativo_receptivo" />
       <Donut titulo="Distribuição por status" filters={filters} dimensao="status" />
       <VolumePorHora filters={filters} />
