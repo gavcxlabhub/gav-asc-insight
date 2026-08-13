@@ -57,13 +57,24 @@ export interface Kpis {
   tme_segundos: number | null;
   tma_segundos: number | null;
   tpr_segundos: number | null;
+  // Recorrência calculada pelo sistema
+  asc_rechamadas: number;
+  asc_recorrentes: number;
+  asc_reincidentes: number;
+  sys_rechamadas: number;
+  sys_recorrentes: number;
+  sys_reincidentes: number;
 }
 
 export const kpisQuery = (f: DashboardFilters) =>
   queryOptions({
     queryKey: ["kpis", f],
     staleTime: STALE_TIME,
-    queryFn: () => rpc<Kpis>("get_kpis", filtrosRpcArgs(f)),
+    queryFn: () => {
+      const args = filtrosRpcArgs(f);
+      delete args["p_recorrencia"];
+      return rpc<Kpis>("get_kpis_comparativo", args);
+    },
   });
 
 export interface EvolucaoPonto {
@@ -205,8 +216,6 @@ export function percentual(parte: number, total: number) {
   return `${((parte / total) * 100).toFixed(1).replace(".", ",")}%`;
 }
 
-/* ---------- Recorrência por dimensão (conta / serviço / agente) ---------- */
-
 export type DimensaoDetalhe = "conta" | "servico" | "agente";
 export type TipoRecorrencia = "rechamada" | "recorrente" | "reincid";
 
@@ -241,8 +250,6 @@ export const recorrenciaDimensaoQuery = (
       }),
   });
 
-/* ---------- Detalhes por dimensão ---------- */
-
 export interface DetalheDimensaoLinha {
   rotulo: string;
   total: number;
@@ -273,8 +280,6 @@ export const detalhesDimensaoQuery = (
         p_limite: limite,
       }),
   });
-
-/* ---------- Heatmap dia da semana x hora ---------- */
 
 export interface HeatmapCelula {
   dia_semana: string;
