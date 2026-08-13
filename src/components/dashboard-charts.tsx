@@ -195,7 +195,7 @@ function EvolucaoVolume({ filters }: { filters: DashboardFilters }) {
         <Line
           type="monotone"
           dataKey="humanos"
-          name="Humanos"
+          name="Com Humano"
           stroke={DOURADO}
           strokeWidth={2}
           dot={false}
@@ -306,7 +306,7 @@ export function DashboardCharts({ filters }: { filters: DashboardFilters }) {
         dimensao="servico"
         limite={10}
       />
-      <Donut titulo="Humano × Misto × Automático" filters={filters} dimensao="tipo" />
+      <Donut titulo="Com Humano × Automático" filters={filters} dimensao="tipo" />
       <Donut titulo="Ativo × Receptivo" filters={filters} dimensao="ativo_receptivo" />
       <Donut titulo="Distribuição por status" filters={filters} dimensao="status" />
       <VolumePorHora filters={filters} />
