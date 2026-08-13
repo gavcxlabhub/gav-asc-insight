@@ -18,15 +18,8 @@ export const Route = createFileRoute("/_authenticated/operacional")({
   component: OperacionalPage,
 });
 
-type RpcArgs = Record<string, unknown>;
-interface RpcClient {
-  rpc: (
-    name: string,
-    args: RpcArgs,
-  ) => Promise<{ data: unknown; error: { message: string } | null }>;
-}
-async function rpc<T>(name: string, args: RpcArgs): Promise<T> {
-  const { data, error } = await (supabase as unknown as RpcClient).rpc(name, args);
+async function rpc<T>(name: string, args: Record<string, unknown>): Promise<T> {
+  const { data, error } = await (supabase as any).rpc(name, args);
   if (error) throw new Error(error.message);
   return data as T;
 }
@@ -71,6 +64,7 @@ const indicadoresStatusQuery = (f: DashboardFilters) =>
   queryOptions({
     queryKey: ["indicadores-status", f],
     staleTime: STALE_TIME,
+    enabled: !!f.dataInicio && !!f.dataFim,
     queryFn: () => {
       const args = filtrosRpcArgs(f);
       delete args["p_recorrencia"];
@@ -83,6 +77,7 @@ const fcrQuery = (f: DashboardFilters) =>
   queryOptions({
     queryKey: ["fcr", f],
     staleTime: STALE_TIME,
+    enabled: !!f.dataInicio && !!f.dataFim,
     queryFn: () =>
       rpc<Fcr>("get_fcr", {
         p_data_inicio: f.dataInicio,
@@ -96,6 +91,7 @@ const interacoesQuery = (f: DashboardFilters) =>
   queryOptions({
     queryKey: ["interacoes", f],
     staleTime: STALE_TIME,
+    enabled: !!f.dataInicio && !!f.dataFim,
     queryFn: () =>
       rpc<Interacoes>("get_interacoes", {
         p_data_inicio: f.dataInicio,
@@ -110,12 +106,13 @@ const concentracaoQuery = (f: DashboardFilters) =>
   queryOptions({
     queryKey: ["concentracao-agentes", f],
     staleTime: STALE_TIME,
+    enabled: !!f.dataInicio && !!f.dataFim,
     queryFn: () =>
       rpc<ConcentracaoAgente[]>("get_concentracao_agentes", {
         p_data_inicio: f.dataInicio,
         p_data_fim: f.dataFim,
-        p_conta: f.conta,
-        p_tipo: f.tipo,
+        p_conta: f.conta ?? null,
+        p_tipo: f.tipo ?? null,
       }),
   });
 
@@ -276,6 +273,14 @@ function OperacionalPage() {
         </h2>
         {concentracao.isPending ? (
           <Skeleton className="h-64" />
+        ) : concentracao.isError ? (
+          <div className="surface flex items-center justify-center p-8 text-sm text-muted-foreground">
+            Erro ao carregar dados dos agentes.
+          </div>
+        ) : (concentracao.data ?? []).length === 0 ? (
+          <div className="surface flex items-center justify-center p-8 text-sm text-muted-foreground">
+            Sem dados no período selecionado.
+          </div>
         ) : (
           <div className="surface overflow-x-auto">
             <table className="w-full min-w-[700px] text-left text-sm">
