@@ -57,7 +57,6 @@ export interface Kpis {
   tme_segundos: number | null;
   tma_segundos: number | null;
   tpr_segundos: number | null;
-  // Recorrência calculada pelo sistema
   asc_rechamadas: number;
   asc_recorrentes: number;
   asc_reincidentes: number;
@@ -122,6 +121,17 @@ export const agrupadoQuery = (f: DashboardFilters, dimensao: Dimensao, limite = 
         ...filtrosRpcArgs(f),
         p_dimensao: dimensao,
         p_limite: limite,
+      }),
+  });
+
+// Nova query para o donut de tipo agrupado (Com Humano × Automático)
+export const agrupadoTipoQuery = (f: DashboardFilters) =>
+  queryOptions({
+    queryKey: ["agrupado-tipo", f],
+    staleTime: STALE_TIME,
+    queryFn: () =>
+      rpc<GrupoPonto[]>("get_agrupado_tipo", {
+        ...filtrosRpcArgs(f),
       }),
   });
 
