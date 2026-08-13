@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/empty-state";
 import { ImportDialog } from "@/components/import-dialog";
@@ -8,8 +7,10 @@ import { Filters, useDashboardFilters } from "@/components/filters";
 import { KpiCards } from "@/components/kpi-cards";
 import { DashboardCharts } from "@/components/dashboard-charts";
 import { AtendimentosTable } from "@/components/atendimentos-table";
+import { ExportButton } from "@/components/export-button";
 import { useAuth } from "@/hooks/use-auth";
 import { totalAtendimentosQuery } from "@/lib/analytics-queries";
+import { buscarAtendimentosExport } from "@/lib/dashboard-queries";
 
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
@@ -17,8 +18,7 @@ export const Route = createFileRoute("/_authenticated/")({
       { title: "Visão Executiva — GAV ASC Analytics" },
       {
         name: "description",
-        content:
-          "Painel executivo dos atendimentos WhatsApp da GAV Resorts consolidados da plataforma ASC.",
+        content: "Painel executivo dos atendimentos WhatsApp da GAV Resorts consolidados da plataforma ASC.",
       },
       { property: "og:title", content: "Visão Executiva — GAV ASC Analytics" },
       {
@@ -36,7 +36,6 @@ function VisaoExecutiva() {
   const { isAdmin, user } = useAuth();
   const total = useQuery(totalAtendimentosQuery());
   const { state, setState, filters } = useDashboardFilters();
-
   const temBase = (total.data ?? 0) > 0;
 
   return (
@@ -46,7 +45,6 @@ function VisaoExecutiva() {
         description="Panorama consolidado dos atendimentos WhatsApp via plataforma ASC."
         actions={isAdmin && user ? <ImportDialog userId={user.id} /> : null}
       />
-
       {!total.isPending && !temBase ? (
         <EmptyState
           action={
@@ -64,6 +62,28 @@ function VisaoExecutiva() {
           <Filters state={state} onChange={setState} />
           <KpiCards filters={filters} />
           <DashboardCharts filters={filters} />
+          <div className="mt-4 flex justify-end">
+            <ExportButton
+              filename={`gav-atendimentos-${new Date().toISOString().slice(0, 10)}`}
+              fetchData={async () => {
+                const data = await buscarAtendimentosExport(filters, "");
+                return (data ?? []).map((r) => ({
+                  Protocolo: r.protocolo,
+                  Contato: r.contato,
+                  Agente: r.agente,
+                  Conta: r.conta,
+                  Servico: r.servico,
+                  Tipo: r.tipo,
+                  AtivoReceptivo: r.ativo_receptivo,
+                  Status: r.status,
+                  DataEntrada: r.data_entrada,
+                  TME: r.tempo_em_fila,
+                  TMA: r.tempo_atendimento,
+                  Recorrencia: r.recorrencia_origem,
+                }));
+              }}
+            />
+          </div>
           <AtendimentosTable filters={filters} />
         </>
       )}
