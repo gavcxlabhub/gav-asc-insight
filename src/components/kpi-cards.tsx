@@ -38,14 +38,16 @@ export function KpiCards({ filters }: { filters: DashboardFilters }) {
   const { data, isPending } = useQuery(kpisQuery(filters));
   const n = (v: number | null | undefined) => (v ?? 0).toLocaleString("pt-BR");
   const total = data?.total ?? 0;
+  const comHumano = data?.com_humano ?? data?.humanos ?? 0;
   const automacao = total ? ((data?.automaticos ?? 0) / total) * 100 : 0;
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <KpiCard titulo="Total de atendimentos" valor={n(total)} loading={isPending} />
       <KpiCard
-        titulo="Humanos / Mistos / Automáticos"
-        valor={`${n(data?.humanos)} / ${n(data?.mistos)} / ${n(data?.automaticos)}`}
+        titulo="Com humano / Automáticos"
+        valor={`${n(comHumano)} / ${n(data?.automaticos)}`}
+        detalhe="Humano + Misto contam como atendimento com humano"
         loading={isPending}
       />
       <KpiCard
