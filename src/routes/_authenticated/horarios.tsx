@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Clock } from "lucide-react";
 
-import { PlaceholderPage } from "@/components/placeholder-page";
+import { PageHeader } from "@/components/page-header";
+import { Filters, useDashboardFilters } from "@/components/filters";
+import { HorariosView } from "@/components/horarios-view";
 
 export const Route = createFileRoute("/_authenticated/horarios")({
   head: () => ({
@@ -16,14 +17,23 @@ export const Route = createFileRoute("/_authenticated/horarios")({
         property: "og:description",
         content: "Distribuição dos atendimentos WhatsApp por hora e dia da semana.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: () => (
-    <PlaceholderPage
-      title="Horários de Pico"
-      description="Concentração da demanda por faixa horária e dia da semana."
-      icon={Clock}
-      nota="O mapa de calor de horários será construído nesta área."
-    />
-  ),
+  component: HorariosPage,
 });
+
+function HorariosPage() {
+  const { state, setState, filters } = useDashboardFilters();
+  return (
+    <>
+      <PageHeader
+        title="Horários de Pico"
+        description="Concentração da demanda por faixa horária e dia da semana."
+      />
+      <Filters state={state} onChange={setState} />
+      <HorariosView filters={filters} />
+    </>
+  );
+}
