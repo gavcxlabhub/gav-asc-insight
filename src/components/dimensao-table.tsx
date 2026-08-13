@@ -1,23 +1,33 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp } from "lucide-react";
-
+import { ArrowUpDown } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
+import { ExportButton } from "@/components/export-button";
 import {
   detalhesDimensaoQuery,
   formatarDuracao,
+  percentual,
   type DashboardFilters,
-  type DetalheDimensaoLinha,
   type DimensaoDetalhe,
+  type DetalheDimensaoLinha,
 } from "@/lib/dashboard-queries";
 
 export type ColunaChave =
-  | keyof DetalheDimensaoLinha
+  | "total"
   | "percentual"
+  | "humanos"
+  | "mistos"
+  | "automaticos"
+  | "ativos"
+  | "receptivos"
+  | "rechamadas"
   | "pct_rechamada"
+  | "recorrentes"
   | "pct_recorrencia"
-  | "pct_reincidencia";
+  | "reincidentes"
+  | "pct_reincidencia"
+  | "tme_segundos"
+  | "tma_segundos";
 
 interface Coluna {
   chave: ColunaChave;
@@ -29,33 +39,48 @@ interface DimensaoTableProps {
   dimensao: DimensaoDetalhe;
   rotuloColuna: string;
   colunas: Coluna[];
-  excluirVazios?: boolean;
-  limite?: number;
+  excluirVazios: boolean;
 }
 
-function valorDe(linha: DetalheDimensaoLinha, chave: ColunaChave, total: number): number | string {
+function getCellValue(row: DetalheDimensaoLinha & { percentual_total?: number }, chave: ColunaChave, total: number): string {
   switch (chave) {
-    case "percentual":
-      return total ? (linha.total / total) * 100 : 0;
-    case "pct_rechamada":
-      return linha.total ? (linha.rechamadas / linha.total) * 100 : 0;
-    case "pct_recorrencia":
-      return linha.total ? (linha.recorrentes / linha.total) * 100 : 0;
-    case "pct_reincidencia":
-      return linha.total ? (linha.reincidentes / linha.total) * 100 : 0;
-    default: {
-      const v = linha[chave];
-      return v == null ? 0 : v;
-    }
+    case "total": return (row.total ?? 0).toLocaleString("pt-BR");
+    case "percentual": return percentual(row.total ?? 0, total);
+    case "humanos": return (row.humanos ?? 0).toLocaleString("pt-BR");
+    case "mistos": return (row.mistos ?? 0).toLocaleString("pt-BR");
+    case "automaticos": return (row.automaticos ?? 0).toLocaleString("pt-BR");
+    case "ativos": return (row.ativos ?? 0).toLocaleString("pt-BR");
+    case "receptivos": return (row.receptivos ?? 0).toLocaleString("pt-BR");
+    case "rechamadas": return (row.rechamadas ?? 0).toLocaleString("pt-BR");
+    case "pct_rechamada": return percentual(row.rechamadas ?? 0, row.total ?? 0);
+    case "recorrentes": return (row.recorrentes ?? 0).toLocaleString("pt-BR");
+    case "pct_recorrencia": return percentual(row.recorrentes ?? 0, row.total ?? 0);
+    case "reincidentes": return (row.reincidentes ?? 0).toLocaleString("pt-BR");
+    case "pct_reincidencia": return percentual(row.reincidentes ?? 0, row.total ?? 0);
+    case "tme_segundos": return formatarDuracao(row.tme_segundos);
+    case "tma_segundos": return formatarDuracao(row.tma_segundos);
+    default: return "—";
   }
 }
 
-function formatar(chave: ColunaChave, valor: number | string): string {
-  if (typeof valor === "string") return valor;
-  if (chave === "tme_segundos" || chave === "tma_segundos") return formatarDuracao(valor);
-  if (chave.startsWith("pct_") || chave === "percentual")
-    return `${valor.toFixed(1).replace(".", ",")}%`;
-  return valor.toLocaleString("pt-BR");
+function getSortValue(row: DetalheDimensaoLinha, chave: ColunaChave): number {
+  switch (chave) {
+    case "total": return row.total ?? 0;
+    case "humanos": return row.humanos ?? 0;
+    case "mistos": return row.mistos ?? 0;
+    case "automaticos": return row.automaticos ?? 0;
+    case "ativos": return row.ativos ?? 0;
+    case "receptivos": return row.receptivos ?? 0;
+    case "rechamadas": return row.rechamadas ?? 0;
+    case "pct_rechamada": return (row.rechamadas ?? 0) / Math.max(row.total ?? 1, 1);
+    case "recorrentes": return row.recorrentes ?? 0;
+    case "pct_recorrencia": return (row.recorrentes ?? 0) / Math.max(row.total ?? 1, 1);
+    case "reincidentes": return row.reincidentes ?? 0;
+    case "pct_reincidencia": return (row.reincidentes ?? 0) / Math.max(row.total ?? 1, 1);
+    case "tme_segundos": return row.tme_segundos ?? 0;
+    case "tma_segundos": return row.tma_segundos ?? 0;
+    default: return 0;
+  }
 }
 
 export function DimensaoTable({
@@ -64,115 +89,88 @@ export function DimensaoTable({
   rotuloColuna,
   colunas,
   excluirVazios,
-  limite = 50,
 }: DimensaoTableProps) {
-  const { data, isPending } = useQuery(detalhesDimensaoQuery(filters, dimensao, limite));
-  const [ordem, setOrdem] = useState<{ chave: ColunaChave; asc: boolean }>({
-    chave: "total",
-    asc: false,
+  const [sortChave, setSortChave] = useState<ColunaChave>("total");
+  const [sortAsc, setSortAsc] = useState(false);
+
+  const { data, isPending } = useQuery(detalhesDimensaoQuery(filters, dimensao, 200));
+
+  const rows = (data ?? []).filter((r) => !excluirVazios || r.rotulo !== "Sem agente");
+  const total = rows.reduce((s, r) => s + (r.total ?? 0), 0);
+
+  const sorted = [...rows].sort((a, b) => {
+    const diff = getSortValue(a, sortChave) - getSortValue(b, sortChave);
+    return sortAsc ? diff : -diff;
   });
 
-  const linhas = useMemo(() => {
-    let base = data ?? [];
-    if (excluirVazios) {
-      base = base.filter(
-        (l) => l.rotulo.trim() !== "" && !l.rotulo.toLowerCase().startsWith("sem "),
-      );
-    }
-    const total = base.reduce((acc, l) => acc + l.total, 0);
-    const ordenadas = [...base].sort((a, b) => {
-      if (ordem.chave === "rotulo") {
-        return ordem.asc ? a.rotulo.localeCompare(b.rotulo) : b.rotulo.localeCompare(a.rotulo);
+  function toggleSort(chave: ColunaChave) {
+    if (sortChave === chave) setSortAsc((v) => !v);
+    else { setSortChave(chave); setSortAsc(false); }
+  }
+
+  async function fetchExportData() {
+    return sorted.map((row) => {
+      const obj: Record<string, unknown> = { [rotuloColuna]: row.rotulo };
+      for (const col of colunas) {
+        obj[col.titulo] = getCellValue(row, col.chave, total);
       }
-      const va = valorDe(a, ordem.chave, total) as number;
-      const vb = valorDe(b, ordem.chave, total) as number;
-      return ordem.asc ? va - vb : vb - va;
+      return obj;
     });
-    return { linhas: ordenadas, total };
-  }, [data, excluirVazios, ordem]);
-
-  function alternar(chave: ColunaChave) {
-    setOrdem((o) => (o.chave === chave ? { chave, asc: !o.asc } : { chave, asc: false }));
   }
 
-  if (isPending) {
-    return (
-      <div className="surface space-y-3 p-5">
-        <Skeleton className="h-6 w-48" />
-        {Array.from({ length: 8 }).map((_, i) => (
-          <Skeleton key={i} className="h-9 w-full" />
-        ))}
-      </div>
-    );
-  }
+  if (isPending) return <Skeleton className="h-64 w-full" />;
 
-  if (linhas.linhas.length === 0) {
+  if (sorted.length === 0) {
     return (
-      <div className="surface p-10 text-center text-sm text-muted-foreground">
+      <div className="surface flex items-center justify-center p-8 text-sm text-muted-foreground">
         Sem dados no período e filtros selecionados.
       </div>
     );
   }
 
-  const todas: Coluna[] = [{ chave: "rotulo", titulo: rotuloColuna }, ...colunas];
-
   return (
-    <div className="surface overflow-x-auto">
-      <table className="w-full min-w-[1100px] text-sm">
-        <thead>
-          <tr className="border-b border-border">
-            {todas.map((c) => {
-              const ativo = ordem.chave === c.chave;
-              return (
-                <th
-                  key={c.chave}
-                  className={cn(
-                    "whitespace-nowrap px-3 py-3 text-xs font-medium uppercase tracking-wide text-muted-foreground",
-                    c.chave === "rotulo" ? "text-left" : "text-right",
-                  )}
-                >
+    <div className="surface overflow-hidden">
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+        <p className="text-xs text-muted-foreground">
+          {sorted.length} {dimensao === "agente" ? "agentes" : dimensao === "servico" ? "serviços" : "contas"}
+        </p>
+        <ExportButton
+          filename={`gav-${dimensao}-${new Date().toISOString().slice(0, 10)}`}
+          fetchData={fetchExportData}
+        />
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[900px] text-left text-sm">
+          <thead>
+            <tr className="border-b border-border text-xs text-muted-foreground">
+              <th className="px-4 py-3 font-medium">{rotuloColuna}</th>
+              {colunas.map((col) => (
+                <th key={col.chave} className="px-4 py-3 font-medium">
                   <button
-                    type="button"
-                    onClick={() => alternar(c.chave)}
-                    className={cn(
-                      "inline-flex items-center gap-1 transition-colors hover:text-gold",
-                      ativo && "text-gold",
-                    )}
+                    onClick={() => toggleSort(col.chave)}
+                    className="flex items-center gap-1 hover:text-foreground"
                   >
-                    {c.titulo}
-                    {ativo ? (
-                      ordem.asc ? (
-                        <ArrowUp className="size-3" />
-                      ) : (
-                        <ArrowDown className="size-3" />
-                      )
-                    ) : null}
+                    {col.titulo}
+                    <ArrowUpDown className="size-3" />
                   </button>
                 </th>
-              );
-            })}
-          </tr>
-        </thead>
-        <tbody>
-          {linhas.linhas.map((l) => (
-            <tr key={l.rotulo} className="border-b border-border/60 last:border-0">
-              {todas.map((c) => (
-                <td
-                  key={c.chave}
-                  className={cn(
-                    "whitespace-nowrap px-3 py-2.5",
-                    c.chave === "rotulo"
-                      ? "text-left font-medium text-foreground"
-                      : "text-right text-muted-foreground",
-                  )}
-                >
-                  {formatar(c.chave, valorDe(l, c.chave, linhas.total))}
-                </td>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {sorted.map((row) => (
+              <tr key={row.rotulo} className="border-b border-border/50 hover:bg-muted/30">
+                <td className="px-4 py-2.5 font-medium">{row.rotulo}</td>
+                {colunas.map((col) => (
+                  <td key={col.chave} className="px-4 py-2.5 text-right tabular-nums">
+                    {getCellValue(row, col.chave, total)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
