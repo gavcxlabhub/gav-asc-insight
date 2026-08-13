@@ -445,6 +445,7 @@ export type Database = {
         Returns: boolean
       }
       is_active_user: { Args: { _user_id: string }; Returns: boolean }
+      tipo_match: { Args: { p_tipo: string; v_tipo: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "visualizador"
