@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, queryOptions } from "@tanstack/react-query";
+import { Info } from "lucide-react";
+import { useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { Filters, useDashboardFilters } from "@/components/filters";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -121,17 +123,43 @@ function KpiCard({
   valor,
   detalhe,
   cor,
+  tooltip,
 }: {
   titulo: string;
   valor: string;
   detalhe?: string;
   cor?: string;
+  tooltip?: string;
 }) {
+  const [showTooltip, setShowTooltip] = useState(false);
+
   return (
-    <div className="surface p-5">
-      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        {titulo}
-      </p>
+    <div className="surface p-5 relative">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          {titulo}
+        </p>
+        {tooltip && (
+          <div className="relative flex-shrink-0">
+            <button
+              onMouseEnter={() => setShowTooltip(true)}
+              onMouseLeave={() => setShowTooltip(false)}
+              onFocus={() => setShowTooltip(true)}
+              onBlur={() => setShowTooltip(false)}
+              className="text-muted-foreground hover:text-foreground transition-colors"
+              aria-label={`Informação sobre ${titulo}`}
+            >
+              <Info className="size-3.5" />
+            </button>
+            {showTooltip && (
+              <div className="absolute right-0 top-6 z-50 w-64 rounded-lg border border-border bg-[#1C324B] p-3 text-xs text-[#F3EEDF] shadow-xl">
+                <div className="absolute -top-1.5 right-1 size-3 rotate-45 border-l border-t border-border bg-[#1C324B]" />
+                {tooltip}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
       <p className={`mt-2 font-display text-3xl font-bold ${cor ?? "text-foreground"}`}>
         {valor}
       </p>
@@ -166,9 +194,7 @@ function OperacionalPage() {
         </h2>
         {status.isPending ? (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {[...Array(4)].map((_, i) => (
-              <Skeleton key={i} className="h-28" />
-            ))}
+            {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-28" />)}
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -177,23 +203,27 @@ function OperacionalPage() {
               valor={n(status.data?.finalizados)}
               detalhe={`${pct(status.data?.pct_finalizados)} do total`}
               cor="text-emerald-400"
+              tooltip="Atendimentos encerrados com sucesso após interação completa com o cliente. É o desfecho ideal de um atendimento."
             />
             <KpiCard
               titulo="Finaliz. por Inatividade"
               valor={n(status.data?.finalizados_inatividade)}
               detalhe={`${pct(status.data?.pct_inatividade)} do total`}
               cor="text-amber-400"
+              tooltip="Atendimentos encerrados automaticamente porque o cliente parou de responder. Alta taxa pode indicar demora no retorno do agente ou cliente não encontrou o que precisava."
             />
             <KpiCard
               titulo="Transferidos"
               valor={n(status.data?.transferidos)}
               detalhe={`${pct(status.data?.pct_transferencia)} do total`}
               cor="text-blue-400"
+              tooltip="Atendimentos transferidos de uma fila ou agente para outro. Taxa alta pode indicar problema na triagem inicial ou na especialização das filas."
             />
             <KpiCard
               titulo="Em Atendimento"
               valor={n(status.data?.em_atendimento)}
               detalhe="Atendimentos abertos"
+              tooltip="Atendimentos que ainda estão em andamento no momento da análise. Número alto pode indicar acúmulo de demanda ou atendimentos muito longos."
             />
           </div>
         )}
@@ -206,9 +236,7 @@ function OperacionalPage() {
         </h2>
         {fcr.isPending ? (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {[...Array(3)].map((_, i) => (
-              <Skeleton key={i} className="h-28" />
-            ))}
+            {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-28" />)}
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -216,18 +244,21 @@ function OperacionalPage() {
               titulo="Clientes únicos"
               valor={n(fcr.data?.total_clientes)}
               detalhe="Telefones distintos no período"
+              tooltip="Quantidade de clientes diferentes que entraram em contato no período, identificados pelo número de telefone. Um cliente pode ter múltiplos atendimentos."
             />
             <KpiCard
               titulo="Resolvidos no 1º contato"
               valor={n(fcr.data?.resolvidos_primeiro_contato)}
               detalhe={`${pct(fcr.data?.fcr_percentual)} dos clientes`}
               cor="text-emerald-400"
+              tooltip="First Call Resolution (FCR): clientes que não voltaram a entrar em contato nas 24 horas seguintes ao atendimento. Indica que o problema foi resolvido logo na primeira tentativa. Quanto maior, melhor."
             />
             <KpiCard
               titulo="Retornaram em 24h"
               valor={n(fcr.data?.retornaram_24h)}
               detalhe="Possível não resolução"
               cor="text-rose-400"
+              tooltip="Clientes que voltaram a entrar em contato em menos de 24 horas após o atendimento. Indica possível não resolução do problema no primeiro contato. Quanto menor, melhor."
             />
           </div>
         )}
@@ -240,9 +271,7 @@ function OperacionalPage() {
         </h2>
         {interacoes.isPending ? (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {[...Array(3)].map((_, i) => (
-              <Skeleton key={i} className="h-28" />
-            ))}
+            {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-28" />)}
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -250,17 +279,20 @@ function OperacionalPage() {
               titulo="QIC médio"
               valor={String(interacoes.data?.qic_medio ?? "—")}
               detalhe="Mensagens do cliente por atendimento"
+              tooltip="Quantidade de Interações do Cliente (QIC): média de mensagens enviadas pelo cliente em cada atendimento. Valor alto indica clientes que precisaram de muita troca para ser atendidos."
             />
             <KpiCard
               titulo="QIA médio"
               valor={String(interacoes.data?.qia_medio ?? "—")}
               detalhe="Mensagens do agente por atendimento"
+              tooltip="Quantidade de Interações do Agente (QIA): média de mensagens enviadas pelo agente em cada atendimento. Valor muito alto pode indicar atendimentos complexos ou falta de objetividade nas respostas."
             />
             <KpiCard
               titulo="Alta interação (≥5 msgs)"
               valor={n(interacoes.data?.alta_interacao)}
               detalhe="Atendimentos com 5+ mensagens do cliente"
               cor="text-amber-400"
+              tooltip="Atendimentos onde o cliente enviou 5 ou mais mensagens. São os casos mais complexos ou onde o cliente teve dificuldade de ser atendido. Merecem atenção especial da gestão."
             />
           </div>
         )}
@@ -287,11 +319,21 @@ function OperacionalPage() {
               <thead>
                 <tr className="border-b border-border text-xs text-muted-foreground">
                   <th className="px-4 py-3 font-medium">Agente</th>
-                  <th className="px-4 py-3 font-medium text-right">Volume</th>
-                  <th className="px-4 py-3 font-medium text-right">% Volume</th>
-                  <th className="px-4 py-3 font-medium text-right">1ª Resposta</th>
-                  <th className="px-4 py-3 font-medium text-right">TMA</th>
-                  <th className="px-4 py-3 font-medium text-right">% Inatividade</th>
+                  <th className="px-4 py-3 font-medium text-right">
+                    <span title="Total de atendimentos do agente no período">Volume</span>
+                  </th>
+                  <th className="px-4 py-3 font-medium text-right">
+                    <span title="Percentual do volume total da equipe atribuído a este agente">% Volume</span>
+                  </th>
+                  <th className="px-4 py-3 font-medium text-right">
+                    <span title="Tempo médio entre o cliente entrar na fila e receber a 1ª mensagem do agente">1ª Resposta</span>
+                  </th>
+                  <th className="px-4 py-3 font-medium text-right">
+                    <span title="Tempo Médio de Atendimento: duração média de cada atendimento do agente">TMA</span>
+                  </th>
+                  <th className="px-4 py-3 font-medium text-right">
+                    <span title="Percentual de atendimentos encerrados por inatividade do cliente. Alto pode indicar demora nas respostas do agente">% Inatividade</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -300,17 +342,11 @@ function OperacionalPage() {
                     <td className="px-4 py-2.5 font-medium">{row.agente}</td>
                     <td className="px-4 py-2.5 text-right">{n(row.total)}</td>
                     <td className="px-4 py-2.5 text-right">{pct(row.percentual_volume)}</td>
-                    <td className="px-4 py-2.5 text-right">
-                      {formatarDuracao(row.tpr_segundos)}
-                    </td>
-                    <td className="px-4 py-2.5 text-right">
-                      {formatarDuracao(row.tma_segundos)}
-                    </td>
+                    <td className="px-4 py-2.5 text-right">{formatarDuracao(row.tpr_segundos)}</td>
+                    <td className="px-4 py-2.5 text-right">{formatarDuracao(row.tma_segundos)}</td>
                     <td
                       className={`px-4 py-2.5 text-right font-medium ${
-                        (row.pct_inatividade ?? 0) > 50
-                          ? "text-amber-400"
-                          : "text-foreground"
+                        (row.pct_inatividade ?? 0) > 50 ? "text-amber-400" : "text-foreground"
                       }`}
                     >
                       {pct(row.pct_inatividade)}
