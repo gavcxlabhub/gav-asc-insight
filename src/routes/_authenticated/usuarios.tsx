@@ -1,162 +1,111 @@
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { UserPlus, ShieldCheck, KeyRound } from "lucide-react";
-import { toast } from "sonner";
-
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth, type AppRole, type Profile } from "@/hooks/use-auth";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Key, ToggleLeft, ToggleRight, UserPlus, Lock } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
-import { EmptyState } from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/hooks/use-auth";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { STALE_TIME } from "@/lib/analytics-queries";
+  listUsers,
+  inviteUser,
+  setUserRole,
+  setUserActive,
+  resetUserPassword,
+  type ManagedUser,
+  type AppRole,
+} from "@/lib/auth.functions";
 
 export const Route = createFileRoute("/_authenticated/usuarios")({
-  head: () => ({
-    meta: [
-      { title: "Gerenciar Usuários — GAV ASC Analytics" },
-      {
-        name: "description",
-        content: "Aprovação, perfis de acesso e convites de usuários da plataforma GAV ASC.",
-      },
-      { property: "og:title", content: "Gerenciar Usuários — GAV ASC Analytics" },
-      {
-        property: "og:description",
-        content: "Aprovação, perfis de acesso e convites de usuários.",
-      },
-    ],
-  }),
-  component: GerenciarUsuarios,
+  beforeLoad: async ({ context }: any) => {
+    if (!context?.isAdmin) throw redirect({ to: "/" });
+  },
+  component: UsuariosPage,
 });
 
-interface Convite {
-  id: string;
-  email: string;
-  nome: string | null;
-  role: AppRole;
-  status: string;
-  created_at: string;
-}
+function UsuariosPage() {
+  const { user } = useAuth();
+  const qc = useQueryClient();
 
-function GerenciarUsuarios() {
-  const { isAdmin, user } = useAuth();
-  const queryClient = useQueryClient();
-  const [email, setEmail] = useState("");
-  const [nome, setNome] = useState("");
-  const [role, setRole] = useState<AppRole>("visualizador");
+  const [inviteNome, setInviteNome] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<AppRole>("visualizador");
+  const [inviteMsg, setInviteMsg] = useState<string | null>(null);
 
-  const usuarios = useQuery({
-    queryKey: ["profiles"],
-    staleTime: STALE_TIME,
-    enabled: isAdmin,
-    queryFn: async (): Promise<Profile[]> => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, nome, email, ativo, role, created_at")
-        .order("created_at", { ascending: true });
-      if (error) throw error;
-      return (data ?? []) as Profile[];
-    },
+  // Modal de definir senha
+  const [senhaModal, setSenhaModal] = useState<{ userId: string; nome: string } | null>(null);
+  const [novaSenha, setNovaSenha] = useState("");
+  const [senhaMsg, setSenhaMsg] = useState<string | null>(null);
+  const [senhaLoading, setSenhaLoading] = useState(false);
+
+  const usersQuery = useQuery({
+    queryKey: ["managed-users"],
+    queryFn: () => listUsers(),
   });
 
-  const convites = useQuery({
-    queryKey: ["convites"],
-    staleTime: STALE_TIME,
-    enabled: isAdmin,
-    queryFn: async (): Promise<Convite[]> => {
-      const { data, error } = await supabase
-        .from("convites")
-        .select("id, email, nome, role, status, created_at")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as Convite[];
-    },
-  });
-
-  const atualizar = useMutation({
-    mutationFn: async (input: { id: string; ativo?: boolean; role?: AppRole }) => {
-      const { id, ...changes } = input;
-      const { error } = await supabase.from("profiles").update(changes).eq("id", id);
-      if (error) throw error;
-    },
+  const inviteMutation = useMutation({
+    mutationFn: () => inviteUser({ nome: inviteNome, email: inviteEmail, role: inviteRole }),
     onSuccess: () => {
-      toast.success("Usuário atualizado.");
-      queryClient.invalidateQueries({ queryKey: ["profiles"] });
-      queryClient.invalidateQueries({ queryKey: ["profile"] });
+      setInviteMsg("Convite enviado com sucesso!");
+      setInviteNome("");
+      setInviteEmail("");
+      setInviteRole("visualizador");
+      qc.invalidateQueries({ queryKey: ["managed-users"] });
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (e: Error) => setInviteMsg(`Erro: ${e.message}`),
   });
 
-  const convidar = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.from("convites").insert({
-        email: email.trim().toLowerCase(),
-        nome: nome.trim() || null,
-        role,
-        convidado_por: user?.id ?? null,
-      });
+  const roleMutation = useMutation({
+    mutationFn: ({ userId, role }: { userId: string; role: AppRole }) =>
+      setUserRole({ targetUserId: userId, role }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["managed-users"] }),
+  });
+
+  const activeMutation = useMutation({
+    mutationFn: ({ userId, ativo }: { userId: string; ativo: boolean }) =>
+      setUserActive({ targetUserId: userId, ativo }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["managed-users"] }),
+  });
+
+  const resetMutation = useMutation({
+    mutationFn: ({ userId }: { userId: string }) =>
+      resetUserPassword({ targetUserId: userId }),
+    onSuccess: () => alert("Email de redefinição enviado!"),
+    onError: (e: Error) => alert(`Erro: ${e.message}`),
+  });
+
+  async function handleDefinirSenha() {
+    if (!senhaModal || !novaSenha || novaSenha.length < 6) {
+      setSenhaMsg("A senha deve ter no mínimo 6 caracteres.");
+      return;
+    }
+    setSenhaLoading(true);
+    setSenhaMsg(null);
+    try {
+      const { error } = await (await import("@/integrations/supabase/client")).supabase
+        .functions.invoke("set-user-password", {
+          body: { userId: senhaModal.userId, password: novaSenha },
+        });
       if (error) throw error;
-      const { error: inviteError } = await supabase.auth.signInWithOtp({
-        email: email.trim().toLowerCase(),
-        options: {
-          shouldCreateUser: true,
-          emailRedirectTo: `${window.location.origin}/auth`,
-          data: { nome: nome.trim() || null },
-        },
-      });
-      if (inviteError) throw inviteError;
-    },
-    onSuccess: () => {
-      toast.success("Convite enviado por email. O acesso depende da sua aprovação.");
-      setEmail("");
-      setNome("");
-      queryClient.invalidateQueries({ queryKey: ["convites"] });
-    },
-    onError: (error: Error) => toast.error(error.message),
-  });
-
-  const redefinirSenha = useMutation({
-    mutationFn: async (emailUsuario: string) => {
-      const { error } = await supabase.auth.resetPasswordForEmail(emailUsuario, {
-        redirectTo: `${window.location.origin}/auth`,
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => toast.success("Email de redefinição de senha enviado."),
-    onError: (error: Error) => toast.error(error.message),
-  });
-
-  if (!isAdmin) {
-    return (
-      <>
-        <PageHeader title="Gerenciar Usuários" />
-        <EmptyState
-          title="Acesso restrito"
-          description="Apenas administradores podem gerenciar usuários."
-          icon={<ShieldCheck className="size-6" />}
-        />
-      </>
-    );
+      setSenhaMsg("Senha definida com sucesso!");
+      setTimeout(() => {
+        setSenhaModal(null);
+        setNovaSenha("");
+        setSenhaMsg(null);
+      }, 1500);
+    } catch {
+      // Fallback: usar admin direto via SQL não é possível no cliente
+      // Instrui o admin a usar o Supabase
+      setSenhaMsg("Use o painel do Supabase para redefinir a senha diretamente.");
+    } finally {
+      setSenhaLoading(false);
+    }
   }
+
+  const inputCls =
+    "w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none";
+  const selectCls =
+    "rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none";
 
   return (
     <>
@@ -165,135 +114,206 @@ function GerenciarUsuarios() {
         description="Aprove acessos, defina perfis e convide novos usuários corporativos."
       />
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_340px]">
-        <div className="surface overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Perfil</TableHead>
-                <TableHead>Ativo</TableHead>
-                <TableHead>Situação</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(usuarios.data ?? []).map((u) => (
-                <TableRow key={u.id}>
-                  <TableCell className="font-medium">{u.nome ?? "—"}</TableCell>
-                  <TableCell className="text-muted-foreground">{u.email}</TableCell>
-                  <TableCell>
-                    <Select
-                      value={u.role}
-                      onValueChange={(value) =>
-                        atualizar.mutate({ id: u.id, role: value as AppRole })
-                      }
-                    >
-                      <SelectTrigger className="w-40">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="admin">Administrador</SelectItem>
-                        <SelectItem value="visualizador">Visualizador</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                  <TableCell>
-                    <Switch
-                      checked={u.ativo}
-                      onCheckedChange={(checked) => atualizar.mutate({ id: u.id, ativo: checked })}
-                      aria-label="Ativar usuário"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={u.ativo ? "default" : "outline"}>
-                      {u.ativo ? "Aprovado" : "Aguardando aprovação"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      disabled={!u.email || redefinirSenha.isPending}
-                      onClick={() => u.email && redefinirSenha.mutate(u.email)}
-                    >
-                      <KeyRound className="mr-2 size-4" />
-                      Redefinir senha
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* LISTA DE USUÁRIOS */}
+        <div className="lg:col-span-2 space-y-4">
+          <div className="surface overflow-x-auto">
+            <table className="w-full min-w-[600px] text-left text-sm">
+              <thead>
+                <tr className="border-b border-border text-xs text-muted-foreground">
+                  <th className="px-4 py-3 font-medium">Nome</th>
+                  <th className="px-4 py-3 font-medium">Email</th>
+                  <th className="px-4 py-3 font-medium">Perfil</th>
+                  <th className="px-4 py-3 font-medium text-center">Ativo</th>
+                  <th className="px-4 py-3 font-medium text-center">Situação</th>
+                  <th className="px-4 py-3 font-medium text-center">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {usersQuery.isPending ? (
+                  [...Array(3)].map((_, i) => (
+                    <tr key={i}>
+                      <td colSpan={6} className="px-4 py-3">
+                        <Skeleton className="h-6 w-full" />
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  (usersQuery.data ?? []).map((u: ManagedUser) => (
+                    <tr key={u.id} className="border-b border-border/50 hover:bg-muted/30">
+                      <td className="px-4 py-2.5 font-medium">{u.nome ?? "—"}</td>
+                      <td className="px-4 py-2.5 text-muted-foreground">{u.email}</td>
+                      <td className="px-4 py-2.5">
+                        <select
+                          value={u.role}
+                          disabled={u.id === user?.id}
+                          onChange={(e) =>
+                            roleMutation.mutate({ userId: u.id, role: e.target.value as AppRole })
+                          }
+                          className={selectCls}
+                        >
+                          <option value="admin">Administrador</option>
+                          <option value="visualizador">Visualizador</option>
+                        </select>
+                      </td>
+                      <td className="px-4 py-2.5 text-center">
+                        <button
+                          disabled={u.id === user?.id}
+                          onClick={() => activeMutation.mutate({ userId: u.id, ativo: !u.ativo })}
+                          className="inline-flex"
+                        >
+                          {u.ativo ? (
+                            <ToggleRight className="size-6 text-primary" />
+                          ) : (
+                            <ToggleLeft className="size-6 text-muted-foreground" />
+                          )}
+                        </button>
+                      </td>
+                      <td className="px-4 py-2.5 text-center">
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                            u.pendente
+                              ? "bg-amber-500/20 text-amber-400"
+                              : u.ativo
+                              ? "bg-emerald-500/20 text-emerald-400"
+                              : "bg-muted text-muted-foreground"
+                          }`}
+                        >
+                          {u.pendente ? "Aguardando aprovação" : u.ativo ? "Aprovado" : "Inativo"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={() => resetMutation.mutate({ userId: u.id })}
+                            title="Enviar email de redefinição de senha"
+                            className="text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            <Key className="size-4" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSenhaModal({ userId: u.id, nome: u.nome ?? u.email });
+                              setNovaSenha("");
+                              setSenhaMsg(null);
+                            }}
+                            title="Definir nova senha diretamente"
+                            className="text-muted-foreground hover:text-primary transition-colors"
+                          >
+                            <Lock className="size-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        <div className="space-y-6">
-          <form
-            className="surface space-y-4 p-5"
-            onSubmit={(event) => {
-              event.preventDefault();
-              convidar.mutate();
-            }}
-          >
-            <div className="flex items-center gap-2 text-sm font-semibold">
-              <UserPlus className="size-4 text-gold" />
+        {/* PAINEL LATERAL */}
+        <div className="space-y-4">
+          {/* CONVIDAR */}
+          <div className="surface p-5 space-y-4">
+            <h3 className="flex items-center gap-2 font-display text-sm font-bold">
+              <UserPlus className="size-4 text-primary" />
               Convidar usuário
+            </h3>
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Nome</label>
+                <input
+                  value={inviteNome}
+                  onChange={(e) => setInviteNome(e.target.value)}
+                  className={inputCls}
+                  placeholder="Nome completo"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Email</label>
+                <input
+                  type="email"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  className={inputCls}
+                  placeholder="email@gavresorts.com.br"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Perfil</label>
+                <select
+                  value={inviteRole}
+                  onChange={(e) => setInviteRole(e.target.value as AppRole)}
+                  className={`${selectCls} w-full`}
+                >
+                  <option value="visualizador">Visualizador</option>
+                  <option value="admin">Administrador</option>
+                </select>
+              </div>
+              {inviteMsg && (
+                <p className={`text-xs ${inviteMsg.startsWith("Erro") ? "text-destructive" : "text-emerald-400"}`}>
+                  {inviteMsg}
+                </p>
+              )}
+              <Button
+                onClick={() => inviteMutation.mutate()}
+                disabled={!inviteEmail || inviteMutation.isPending}
+                className="w-full"
+              >
+                {inviteMutation.isPending ? "Enviando..." : "Enviar convite"}
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                O convidado recebe um email de acesso, mas só entra na plataforma após ser aprovado aqui.
+              </p>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="conv-nome">Nome</Label>
-              <Input id="conv-nome" value={nome} onChange={(e) => setNome(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="conv-email">Email</Label>
-              <Input
-                id="conv-email"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Perfil</Label>
-              <Select value={role} onValueChange={(value) => setRole(value as AppRole)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="visualizador">Visualizador</SelectItem>
-                  <SelectItem value="admin">Administrador</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <Button type="submit" className="w-full" disabled={convidar.isPending}>
-              Enviar convite
-            </Button>
-            <p className="text-xs text-muted-foreground">
-              O convidado recebe um email de acesso, mas só entra na plataforma após ser aprovado
-              aqui.
-            </p>
-          </form>
-
-          <div className="surface p-5">
-            <p className="mb-3 text-sm font-semibold">Convites enviados</p>
-            {(convites.data ?? []).length === 0 ? (
-              <p className="text-xs text-muted-foreground">Nenhum convite enviado ainda.</p>
-            ) : (
-              <ul className="space-y-2 text-sm">
-                {(convites.data ?? []).map((c) => (
-                  <li key={c.id} className="flex items-center justify-between gap-2">
-                    <span className="truncate">{c.email}</span>
-                    <Badge variant="outline" className="shrink-0 text-xs">
-                      {c.status}
-                    </Badge>
-                  </li>
-                ))}
-              </ul>
-            )}
           </div>
         </div>
       </div>
+
+      {/* MODAL DEFINIR SENHA */}
+      {senhaModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="surface w-full max-w-sm p-6 space-y-4">
+            <h3 className="font-display text-lg font-bold">Definir nova senha</h3>
+            <p className="text-sm text-muted-foreground">
+              Definindo senha para: <strong>{senhaModal.nome}</strong>
+            </p>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Nova senha</label>
+              <input
+                type="password"
+                value={novaSenha}
+                onChange={(e) => setNovaSenha(e.target.value)}
+                className={inputCls}
+                placeholder="Mínimo 6 caracteres"
+                minLength={6}
+              />
+            </div>
+            {senhaMsg && (
+              <p className={`text-xs ${senhaMsg.includes("sucesso") ? "text-emerald-400" : "text-amber-400"}`}>
+                {senhaMsg}
+              </p>
+            )}
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => { setSenhaModal(null); setNovaSenha(""); setSenhaMsg(null); }}
+              >
+                Cancelar
+              </Button>
+              <Button
+                className="flex-1"
+                disabled={senhaLoading || novaSenha.length < 6}
+                onClick={handleDefinirSenha}
+              >
+                {senhaLoading ? "Salvando..." : "Salvar senha"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
