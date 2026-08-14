@@ -16,6 +16,7 @@ import { Route as AuthenticatedAgentesRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedContasRouteImport } from './routes/_authenticated/contas'
 import { Route as AuthenticatedGerenciarRouteImport } from './routes/_authenticated/gerenciar'
 import { Route as AuthenticatedHorariosRouteImport } from './routes/_authenticated/horarios'
+import { Route as AuthenticatedOperacionalRouteImport } from './routes/_authenticated/operacional'
 import { Route as AuthenticatedRecorrenciaRouteImport } from './routes/_authenticated/recorrencia'
 import { Route as AuthenticatedServicosRouteImport } from './routes/_authenticated/servicos'
 import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated/usuarios'
@@ -54,6 +55,12 @@ const AuthenticatedHorariosRoute = AuthenticatedHorariosRouteImport.update({
   path: '/horarios',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedOperacionalRoute =
+  AuthenticatedOperacionalRouteImport.update({
+    id: '/operacional',
+    path: '/operacional',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedRecorrenciaRoute =
   AuthenticatedRecorrenciaRouteImport.update({
     id: '/recorrencia',
@@ -78,6 +85,7 @@ export interface FileRoutesByFullPath {
   '/contas': typeof AuthenticatedContasRoute
   '/gerenciar': typeof AuthenticatedGerenciarRoute
   '/horarios': typeof AuthenticatedHorariosRoute
+  '/operacional': typeof AuthenticatedOperacionalRoute
   '/recorrencia': typeof AuthenticatedRecorrenciaRoute
   '/servicos': typeof AuthenticatedServicosRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
@@ -88,6 +96,7 @@ export interface FileRoutesByTo {
   '/contas': typeof AuthenticatedContasRoute
   '/gerenciar': typeof AuthenticatedGerenciarRoute
   '/horarios': typeof AuthenticatedHorariosRoute
+  '/operacional': typeof AuthenticatedOperacionalRoute
   '/recorrencia': typeof AuthenticatedRecorrenciaRoute
   '/servicos': typeof AuthenticatedServicosRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
@@ -101,6 +110,7 @@ export interface FileRoutesById {
   '/_authenticated/contas': typeof AuthenticatedContasRoute
   '/_authenticated/gerenciar': typeof AuthenticatedGerenciarRoute
   '/_authenticated/horarios': typeof AuthenticatedHorariosRoute
+  '/_authenticated/operacional': typeof AuthenticatedOperacionalRoute
   '/_authenticated/recorrencia': typeof AuthenticatedRecorrenciaRoute
   '/_authenticated/servicos': typeof AuthenticatedServicosRoute
   '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
@@ -115,6 +125,7 @@ export interface FileRouteTypes {
     | '/contas'
     | '/gerenciar'
     | '/horarios'
+    | '/operacional'
     | '/recorrencia'
     | '/servicos'
     | '/usuarios'
@@ -125,6 +136,7 @@ export interface FileRouteTypes {
     | '/contas'
     | '/gerenciar'
     | '/horarios'
+    | '/operacional'
     | '/recorrencia'
     | '/servicos'
     | '/usuarios'
@@ -137,6 +149,7 @@ export interface FileRouteTypes {
     | '/_authenticated/contas'
     | '/_authenticated/gerenciar'
     | '/_authenticated/horarios'
+    | '/_authenticated/operacional'
     | '/_authenticated/recorrencia'
     | '/_authenticated/servicos'
     | '/_authenticated/usuarios'
@@ -199,6 +212,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedHorariosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/operacional': {
+      id: '/_authenticated/operacional'
+      path: '/operacional'
+      fullPath: '/operacional'
+      preLoaderRoute: typeof AuthenticatedOperacionalRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/recorrencia': {
       id: '/_authenticated/recorrencia'
       path: '/recorrencia'
@@ -228,6 +248,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedContasRoute: typeof AuthenticatedContasRoute
   AuthenticatedGerenciarRoute: typeof AuthenticatedGerenciarRoute
   AuthenticatedHorariosRoute: typeof AuthenticatedHorariosRoute
+  AuthenticatedOperacionalRoute: typeof AuthenticatedOperacionalRoute
   AuthenticatedRecorrenciaRoute: typeof AuthenticatedRecorrenciaRoute
   AuthenticatedServicosRoute: typeof AuthenticatedServicosRoute
   AuthenticatedUsuariosRoute: typeof AuthenticatedUsuariosRoute
@@ -239,6 +260,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedContasRoute: AuthenticatedContasRoute,
   AuthenticatedGerenciarRoute: AuthenticatedGerenciarRoute,
   AuthenticatedHorariosRoute: AuthenticatedHorariosRoute,
+  AuthenticatedOperacionalRoute: AuthenticatedOperacionalRoute,
   AuthenticatedRecorrenciaRoute: AuthenticatedRecorrenciaRoute,
   AuthenticatedServicosRoute: AuthenticatedServicosRoute,
   AuthenticatedUsuariosRoute: AuthenticatedUsuariosRoute,
