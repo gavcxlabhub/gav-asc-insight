@@ -58,27 +58,7 @@ export const periodoBaseQuery = () =>
     queryKey: ["atendimentos", "periodo"],
     staleTime: STALE_TIME,
     queryFn: async () => {
-      const [first, last] = await Promise.all([
-        supabase
-          .from("atendimentos")
-          .select("data_entrada")
-          .not("data_entrada", "is", null)
-          .order("data_entrada", { ascending: true })
-          .limit(1)
-          .maybeSingle(),
-        supabase
-          .from("atendimentos")
-          .select("data_entrada")
-          .not("data_entrada", "is", null)
-          .order("data_entrada", { ascending: false })
-          .limit(1)
-          .maybeSingle(),
-      ]);
-      if (first.error) throw first.error;
-      if (last.error) throw last.error;
-      return {
-        inicio: first.data?.data_entrada ?? null,
-        fim: last.data?.data_entrada ?? null,
-      };
+      const { inicio, fim } = await fetchBaseResumo();
+      return { inicio, fim };
     },
   });
