@@ -1,4 +1,4 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Key, ToggleLeft, ToggleRight, UserPlus, Lock } from "lucide-react";
@@ -6,12 +6,9 @@ import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth, type AppRole, type Profile } from "@/hooks/use-auth";
+import { useAuth, type AppRole } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/_authenticated/usuarios")({
-  beforeLoad: async ({ context }: any) => {
-    if (!context?.isAdmin) throw redirect({ to: "/" });
-  },
   component: UsuariosPage,
 });
 
@@ -27,7 +24,6 @@ interface ManagedUser {
 async function listUsers(): Promise<ManagedUser[]> {
   const { data, error } = await (supabase as any).rpc("list_managed_users");
   if (error) {
-    // Fallback: buscar direto da tabela profiles
     const { data: profiles, error: profileError } = await supabase
       .from("profiles")
       .select("id, nome, email, ativo, role")
@@ -38,20 +34,12 @@ async function listUsers(): Promise<ManagedUser[]> {
   return (data ?? []) as ManagedUser[];
 }
 
-async function inviteUser(email: string, nome: string, role: AppRole): Promise<void> {
-  const { error } = await supabase.auth.admin.inviteUserByEmail(email, {
-    data: { nome, role },
-  });
-  if (error) throw new Error(error.message);
-}
-
 async function setUserRole(userId: string, role: AppRole): Promise<void> {
   const { error } = await supabase
     .from("profiles")
     .update({ role })
     .eq("id", userId);
   if (error) throw new Error(error.message);
-
   await supabase
     .from("user_roles")
     .upsert({ user_id: userId, role }, { onConflict: "user_id,role" });
@@ -73,7 +61,7 @@ async function resetPassword(email: string): Promise<void> {
 }
 
 function UsuariosPage() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const qc = useQueryClient();
 
   const [inviteNome, setInviteNome] = useState("");
@@ -85,6 +73,14 @@ function UsuariosPage() {
   const [novaSenha, setNovaSenha] = useState("");
   const [senhaMsg, setSenhaMsg] = useState<string | null>(null);
   const [senhaLoading, setSenhaLoading] = useState(false);
+
+  if (!isAdmin) {
+    return (
+      <div className="flex items-center justify-center p-12 text-sm text-muted-foreground">
+        Acesso restrito a administradores.
+      </div>
+    );
+  }
 
   const usersQuery = useQuery({
     queryKey: ["managed-users"],
@@ -106,7 +102,6 @@ function UsuariosPage() {
   async function handleInvite() {
     setInviteMsg(null);
     try {
-      // Criar usuário direto no banco já que invite tem rate limit
       const { data: existing } = await supabase
         .from("profiles")
         .select("id")
@@ -118,7 +113,6 @@ function UsuariosPage() {
         return;
       }
 
-      // Envia convite por email
       const { error } = await supabase.auth.resetPasswordForEmail(inviteEmail.trim(), {
         redirectTo: "https://gav-asc-insight.lovable.app/auth",
       });
@@ -142,8 +136,7 @@ function UsuariosPage() {
     setSenhaLoading(true);
     setSenhaMsg(null);
     try {
-      // Atualizar direto no banco via SQL
-      const { error } = await supabase.rpc("admin_set_user_password" as any, {
+      const { error } = await (supabase as any).rpc("admin_set_user_password", {
         p_user_id: senhaModal.userId,
         p_password: novaSenha,
       });
@@ -155,7 +148,7 @@ function UsuariosPage() {
         setSenhaMsg(null);
       }, 1500);
     } catch {
-      setSenhaMsg("⚠️ Não foi possível definir a senha pelo sistema. Use: UPDATE auth.users SET encrypted_password = crypt('" + novaSenha + "', gen_salt('bf')) WHERE email = '" + senhaModal.email + "';");
+      setSenhaMsg("⚠️ Não foi possível definir a senha automaticamente. Contate o administrador do sistema.");
     } finally {
       setSenhaLoading(false);
     }
