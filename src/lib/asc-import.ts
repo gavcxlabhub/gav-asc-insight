@@ -173,12 +173,14 @@ async function buildRow(
   const dataEntrada = toIsoDate(raw["data_entrada"]);
   const protocolo = text("protocolo");
   const conta = text("conta");
+  const agente = text("agente");
 
   if (!protocolo && !telefone && !dataEntrada) return null;
 
-  // Usa protocolo normalizado diretamente como chave — simples e sem risco de variação
+  // Chave: protocolo + agente — preserva múltiplos atendimentos do mesmo protocolo
+  // com agentes diferentes (ex: transferências entre consultores)
   const key = protocolo
-    ? protocolo.trim().toLowerCase()
+    ? `${protocolo.trim().toLowerCase()}|${(agente ?? "").trim().toLowerCase()}`
     : await sha256Hex(
         [normalizePhone(telefone), dataEntrada ?? "", conta ?? ""].join("|"),
       );
@@ -186,7 +188,7 @@ async function buildRow(
   return {
     protocolo,
     source_record_key: key,
-    agente: text("agente"),
+    agente,
     conta,
     servico: text("servico"),
     contato: text("contato"),
