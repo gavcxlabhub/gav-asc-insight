@@ -3,18 +3,25 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const STALE_TIME = 5 * 60 * 1000;
 
-/** Total de atendimentos — usa count agregado, nunca traz linhas. */
+interface BaseResumo {
+  total: number;
+  inicio: string | null;
+  fim: string | null;
+}
+
+async function fetchBaseResumo(): Promise<BaseResumo> {
+  const { data, error } = await supabase.rpc("get_base_resumo");
+  if (error) throw error;
+  const r = (data ?? {}) as Partial<BaseResumo>;
+  return { total: r.total ?? 0, inicio: r.inicio ?? null, fim: r.fim ?? null };
+}
+
+/** Total de atendimentos — usa RPC agregada, nunca traz linhas. */
 export const totalAtendimentosQuery = () =>
   queryOptions({
     queryKey: ["atendimentos", "count"],
     staleTime: STALE_TIME,
-    queryFn: async () => {
-      const { count, error } = await supabase
-        .from("atendimentos")
-        .select("id", { count: "exact", head: true });
-      if (error) throw error;
-      return count ?? 0;
-    },
+    queryFn: async () => (await fetchBaseResumo()).total,
   });
 
 export interface ImportacaoResumo {
