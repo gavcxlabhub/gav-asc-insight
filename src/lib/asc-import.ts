@@ -27,7 +27,6 @@ export interface ImportSummary {
   importacaoId: string | null;
 }
 
-/** Normaliza um cabeçalho: minúsculo, sem acento, apenas letras e números. */
 function normalizeHeader(value: string): string {
   return value
     .normalize("NFD")
@@ -36,7 +35,6 @@ function normalizeHeader(value: string): string {
     .replace(/[^a-z0-9]/g, "");
 }
 
-/** Sinônimos aceitos por campo (já normalizados). */
 const FIELD_ALIASES: Record<string, string[]> = {
   agente: ["agente", "atendente", "operador"],
   conta: ["conta", "departamento", "setor"],
@@ -97,12 +95,10 @@ function buildColumnMap(headers: string[]): Record<number, string> {
   return map;
 }
 
-/** Converte serial Excel ou string em ISO. Retorna null se inválido. */
 export function toIsoDate(value: unknown): string | null {
   if (value === null || value === undefined || value === "") return null;
 
   if (typeof value === "number" && Number.isFinite(value)) {
-    // Serial Excel (base 1899-12-30), em UTC.
     const ms = Math.round((value - 25569) * 86400 * 1000);
     const d = new Date(ms);
     return Number.isNaN(d.getTime()) ? null : d.toISOString();
@@ -115,7 +111,6 @@ export function toIsoDate(value: unknown): string | null {
   const text = String(value).trim();
   if (!text) return null;
 
-  // dd/mm/yyyy [hh:mm[:ss]]
   const br = text.match(
     /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/,
   );
@@ -128,7 +123,6 @@ export function toIsoDate(value: unknown): string | null {
     return Number.isNaN(date.getTime()) ? null : date.toISOString();
   }
 
-  // Número em texto (serial Excel exportado como string)
   if (/^\d+(\.\d+)?$/.test(text)) return toIsoDate(Number(text));
 
   const parsed = new Date(text);
@@ -174,20 +168,21 @@ async function buildRow(
     const s = String(v).trim().replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "");
     return s === "" ? null : s;
   };
+
   const telefone = raw["telefone"] === undefined ? null : String(raw["telefone"]).trim();
   const dataEntrada = toIsoDate(raw["data_entrada"]);
   const protocolo = text("protocolo");
   const conta = text("conta");
   const agente = text("agente");
 
-  // Registro inválido: sem qualquer identificação útil.
   if (!protocolo && !telefone && !dataEntrada) return null;
 
-  const key = await sha256Hex(
-    [protocolo ?? "", normalizePhone(telefone), dataEntrada ?? "", conta ?? "", agente ?? ""].join(
-      "|",
-    ),
-  );
+  // Usa só o protocolo como chave quando disponível — garante deduplicação correta
+  const key = protocolo
+    ? await sha256Hex(protocolo.trim().toLowerCase())
+    : await sha256Hex(
+        [normalizePhone(telefone), dataEntrada ?? "", conta ?? ""].join("|"),
+      );
 
   return {
     protocolo,
@@ -236,9 +231,9 @@ export async function importAscFile(
   onProgress({ stage: "lendo", processed: 0, total: 0 });
 
   const rawBuffer = await file.arrayBuffer();
-const uint8 = new Uint8Array(rawBuffer);
-const cleaned = uint8.filter(b => b !== 0x00);
-const buffer = cleaned.buffer;
+  const uint8 = new Uint8Array(rawBuffer);
+  const cleaned = uint8.filter(b => b !== 0x00);
+  const buffer = cleaned.buffer;
   const workbook = XLSX.read(buffer, { type: "array", cellDates: false, raw: true });
   const sheetName = workbook.SheetNames[0];
   if (!sheetName) throw new Error("Arquivo sem planilhas.");
@@ -292,12 +287,10 @@ const buffer = cleaned.buffer;
     }
   }
 
-   // Duplicatas tratadas pelo upsert com ignoreDuplicates no banco
   onProgress({ stage: "duplicatas", processed: parsed.length, total: parsed.length });
   const novosRows = parsed;
   const duplicados = duplicadosArquivo;
 
-  // Período coberto
   const datas = parsed
     .map((r) => r["data_entrada"] as string | null)
     .filter((d): d is string => !!d)
@@ -305,7 +298,6 @@ const buffer = cleaned.buffer;
   const periodoInicio = datas[0] ?? null;
   const periodoFim = datas[datas.length - 1] ?? null;
 
-  // Registro da importação
   const { data: importacao, error: impError } = await supabase
     .from("importacoes")
     .insert({
@@ -326,14 +318,13 @@ const buffer = cleaned.buffer;
 
   onProgress({ stage: "salvando", processed: 0, total: novosRows.length });
 
-    for (let i = 0; i < novosRows.length; i += BATCH_SIZE) {
+  for (let i = 0; i < novosRows.length; i += BATCH_SIZE) {
     const batch = novosRows.slice(i, i + BATCH_SIZE).map((r) => ({
       ...r,
       importacao_id: importacaoId,
     }));
     const { error } = await supabase
       .from("atendimentos")
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .upsert(batch as any, { onConflict: "source_record_key", ignoreDuplicates: true });
     if (error) throw new Error(`[${(error as any).code}] ${error.message}`);
     onProgress({
@@ -341,17 +332,17 @@ const buffer = cleaned.buffer;
       processed: Math.min(i + BATCH_SIZE, novosRows.length),
       total: novosRows.length,
     });
-    // Pausa entre lotes para não sobrecarregar
     await new Promise((r) => setTimeout(r, 50));
   }
 
-  // Atualiza o registro com os totais finais
   await supabase
     .from("importacoes")
     .update({ registros_novos: novosRows.length, duplicados, invalidos })
     .eq("id", importacaoId);
 
-  const summary: ImportSummary = {
+  onProgress({ stage: "concluido", processed: novosRows.length, total: novosRows.length });
+
+  return {
     totalLido: dataRows.length,
     novos: novosRows.length,
     duplicados,
@@ -360,8 +351,4 @@ const buffer = cleaned.buffer;
     periodoFim,
     importacaoId,
   };
-
-  onProgress({ stage: "concluido", processed: novosRows.length, total: novosRows.length });
-
-  return summary;
 }
