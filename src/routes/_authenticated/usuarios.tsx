@@ -68,23 +68,16 @@ function UsuariosPage() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<AppRole>("visualizador");
   const [inviteMsg, setInviteMsg] = useState<string | null>(null);
-
   const [senhaModal, setSenhaModal] = useState<{ userId: string; nome: string; email: string } | null>(null);
   const [novaSenha, setNovaSenha] = useState("");
   const [senhaMsg, setSenhaMsg] = useState<string | null>(null);
   const [senhaLoading, setSenhaLoading] = useState(false);
 
-  if (!isAdmin) {
-    return (
-      <div className="flex items-center justify-center p-12 text-sm text-muted-foreground">
-        Acesso restrito a administradores.
-      </div>
-    );
-  }
-
+  // Todos os hooks ANTES de qualquer return condicional
   const usersQuery = useQuery({
     queryKey: ["managed-users"],
     queryFn: listUsers,
+    enabled: isAdmin, // Só busca se for admin
   });
 
   const roleMutation = useMutation({
@@ -99,6 +92,15 @@ function UsuariosPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["managed-users"] }),
   });
 
+  // Return condicional DEPOIS de todos os hooks
+  if (!isAdmin) {
+    return (
+      <div className="flex items-center justify-center p-12 text-sm text-muted-foreground">
+        Acesso restrito a administradores.
+      </div>
+    );
+  }
+
   async function handleInvite() {
     setInviteMsg(null);
     try {
@@ -107,16 +109,13 @@ function UsuariosPage() {
         .select("id")
         .eq("email", inviteEmail.trim())
         .maybeSingle();
-
       if (existing) {
         setInviteMsg("Este email já está cadastrado.");
         return;
       }
-
       const { error } = await supabase.auth.resetPasswordForEmail(inviteEmail.trim(), {
         redirectTo: "https://gav-asc-insight.lovable.app/auth",
       });
-
       if (error) throw error;
       setInviteMsg("Convite enviado! O usuário receberá um email para definir a senha.");
       setInviteNome("");
@@ -148,7 +147,7 @@ function UsuariosPage() {
         setSenhaMsg(null);
       }, 1500);
     } catch {
-      setSenhaMsg("⚠️ Não foi possível definir a senha automaticamente. Contate o administrador do sistema.");
+      setSenhaMsg("⚠️ Não foi possível definir a senha automaticamente.");
     } finally {
       setSenhaLoading(false);
     }
@@ -165,7 +164,6 @@ function UsuariosPage() {
       />
 
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* LISTA */}
         <div className="lg:col-span-2">
           <div className="surface overflow-x-auto">
             <table className="w-full min-w-[600px] text-left text-sm">
@@ -259,7 +257,6 @@ function UsuariosPage() {
           </div>
         </div>
 
-        {/* PAINEL LATERAL */}
         <div className="space-y-4">
           <div className="surface p-5 space-y-4">
             <h3 className="flex items-center gap-2 font-display text-sm font-bold">
@@ -317,7 +314,6 @@ function UsuariosPage() {
         </div>
       </div>
 
-      {/* MODAL SENHA */}
       {senhaModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
           <div className="surface w-full max-w-sm p-6 space-y-4">
