@@ -8,8 +8,9 @@ interface ExportButtonProps {
 }
 
 function toCSV(rows: Record<string, unknown>[]): string {
-  if (rows.length === 0) return "";
-  const headers = Object.keys(rows[0]);
+  const firstRow = rows[0];
+  if (!firstRow) return "";
+  const headers = Object.keys(firstRow);
   const escape = (v: unknown) => {
     const s = v == null ? "" : String(v);
     return s.includes(",") || s.includes('"') || s.includes("\n")
