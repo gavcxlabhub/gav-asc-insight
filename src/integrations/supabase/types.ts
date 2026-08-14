@@ -315,6 +315,7 @@ export type Database = {
           total_count: number
         }[]
       }
+      get_base_resumo: { Args: never; Returns: Json }
       get_detalhes_por_dimensao: {
         Args: {
           p_agente?: string
