@@ -74,7 +74,7 @@ export const kpisQuery = (f: DashboardFilters) =>
     queryFn: () => {
       const args = filtrosRpcArgs(f);
       delete args["p_recorrencia"];
-      return rpc<Kpis>("get_kpis_comparativo", args);
+      return rpc<Kpis>("get_kpis", args);
     },
   });
 
@@ -126,15 +126,37 @@ export const agrupadoQuery = (f: DashboardFilters, dimensao: Dimensao, limite = 
       }),
   });
 
-// Nova query para o donut de tipo agrupado (Com Humano × Automático)
+// Donut de tipo usando a RPC estável get_agrupado e agrupando apenas 4 categorias locais.
 export const agrupadoTipoQuery = (f: DashboardFilters) =>
   queryOptions({
     queryKey: ["agrupado-tipo", f],
     staleTime: STALE_TIME,
-    queryFn: () =>
-      rpc<GrupoPonto[]>("get_agrupado_tipo", {
+    queryFn: async () => {
+      const rows = await rpc<GrupoPonto[]>("get_agrupado", {
         ...filtrosRpcArgs(f),
-      }),
+        p_dimensao: "tipo",
+        p_limite: 20,
+      });
+
+      let comHumano = 0;
+      let automacao = 0;
+      let outros = 0;
+
+      for (const row of rows ?? []) {
+        if (row.rotulo === "Humano" || row.rotulo === "Misto") comHumano += Number(row.total ?? 0);
+        else if (row.rotulo === "Automático" || row.rotulo === "Notificação") automacao += Number(row.total ?? 0);
+        else outros += Number(row.total ?? 0);
+      }
+
+      const result: GrupoPonto[] = [
+        { rotulo: "Com Humano", total: comHumano, humanos: comHumano, receptivos: 0 },
+        { rotulo: "Automação", total: automacao, humanos: 0, receptivos: 0 },
+      ];
+      if (outros > 0) {
+        result.push({ rotulo: "Outros", total: outros, humanos: 0, receptivos: 0 });
+      }
+      return result.filter((r) => r.total > 0);
+    },
   });
 
 export interface RecorrenciaPonto {
