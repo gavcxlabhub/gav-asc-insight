@@ -159,7 +159,7 @@ function DonutTipo({ filters }: { filters: DashboardFilters }) {
   const { data, isPending } = useQuery(agrupadoTipoQuery(filters));
   const dados = (data ?? []).map((d) => ({ name: d.rotulo, value: Number(d.total) }));
   return (
-    <ChartCard titulo="Com Humano × Automação" loading={isPending} vazio={dados.length === 0}>
+    <ChartCard titulo="Atendido por Humano × Resolvido pela IA" loading={isPending} vazio={dados.length === 0}>
       <PieChart>
         <Pie data={dados} dataKey="value" nameKey="name" innerRadius={55} outerRadius={95}>
           {dados.map((_, i) => (
@@ -214,7 +214,7 @@ function EvolucaoVolume({ filters }: { filters: DashboardFilters }) {
         <Line
           type="monotone"
           dataKey="humanos"
-          name="Com Humano"
+          name="Atendido por Humano"
           stroke={DOURADO}
           strokeWidth={2}
           dot={false}
@@ -222,7 +222,7 @@ function EvolucaoVolume({ filters }: { filters: DashboardFilters }) {
         <Line
           type="monotone"
           dataKey="automaticos"
-          name="Automação"
+          name="Resolvido pela IA"
           stroke="#B8935A"
           strokeWidth={2}
           dot={false}
