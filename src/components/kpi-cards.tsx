@@ -69,7 +69,8 @@ export function KpiCards({ filters }: { filters: DashboardFilters }) {
   const n = (v: number | null | undefined) => (v ?? 0).toLocaleString("pt-BR");
   const total = data?.total ?? 0;
   const comHumano = data?.com_humano ?? data?.humanos ?? 0;
-  const automacao = total ? ((data?.automaticos ?? 0) / total) * 100 : 0;
+  const totalAutomacao = data?.automacao ?? ((data?.automaticos ?? 0) + (data?.notificacoes ?? 0));
+  const automacao = total ? (totalAutomacao / total) * 100 : 0;
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -80,18 +81,18 @@ export function KpiCards({ filters }: { filters: DashboardFilters }) {
         tooltip="Quantidade total de atendimentos registrados no período e filtros selecionados, incluindo automáticos, humanos e mistos."
       />
       <KpiCard
-        titulo="Com humano / Automáticos"
-        valor={`${n(comHumano)} / ${n(data?.automaticos)}`}
-        detalhe="Humano + Misto contam como atendimento com humano"
+        titulo="Com humano / Automação"
+        valor={`${n(comHumano)} / ${n(totalAutomacao)}`}
+        detalhe={`Automático: ${n(data?.automaticos)} · Notificação: ${n(data?.notificacoes)}`}
         loading={isPending}
-        tooltip="Com Humano: atendimentos onde um agente humano participou (Humano + Misto). Automáticos: atendimentos resolvidos inteiramente pelo bot, sem intervenção humana."
+        tooltip="Com Humano: atendimentos onde um agente humano participou (Humano + Misto). Automação: registros do tipo Automático + Notificação, sem participação humana."
       />
       <KpiCard
         titulo="% Automação"
         valor={`${automacao.toFixed(1).replace(".", ",")}%`}
-        detalhe={`${n(data?.automaticos)} atendimentos automáticos`}
+        detalhe={`${n(totalAutomacao)} registros de automação`}
         loading={isPending}
-        tooltip="Percentual de atendimentos resolvidos pelo bot sem nenhuma intervenção humana. Quanto maior, mais eficiente é a automação da operação."
+        tooltip="Percentual de registros sem participação humana, considerando os tipos Automático e Notificação informados pela ASC."
       />
       <KpiCard
         titulo="Ativos / Receptivos"
