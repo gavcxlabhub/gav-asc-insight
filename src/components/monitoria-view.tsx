@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { Info } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -8,20 +9,51 @@ import {
   type MonitoriaAgente,
 } from "@/lib/dashboard-queries";
 
+function InfoHint({ texto, label }: { texto: string; label: string }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="relative shrink-0">
+      <button
+        type="button"
+        aria-label={`Informação sobre ${label}`}
+        className="text-muted-foreground transition-colors hover:text-foreground"
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+      >
+        <Info className="size-3.5" />
+      </button>
+      {open ? (
+        <div className="absolute right-0 top-6 z-50 w-72 rounded-lg border border-border bg-[#1C324B] p-3 text-xs leading-relaxed text-[#F3EEDF] shadow-xl">
+          <div className="absolute -top-1.5 right-1 size-3 rotate-45 border-l border-t border-border bg-[#1C324B]" />
+          {texto}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function Destaque({
   titulo,
   agente,
   valor,
   detalhe,
+  tooltip,
 }: {
   titulo: string;
   agente?: string;
   valor: string;
   detalhe?: string;
+  tooltip: string;
 }) {
   return (
     <div className="surface p-5">
-      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{titulo}</p>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{titulo}</p>
+        <InfoHint texto={tooltip} label={titulo} />
+      </div>
       <p className="mt-2 font-display text-2xl font-bold text-foreground">{valor}</p>
       <p className="mt-1 truncate text-sm font-medium">{agente ?? "—"}</p>
       {detalhe ? <p className="mt-1 text-xs text-muted-foreground">{detalhe}</p> : null}
@@ -34,16 +66,19 @@ function Ranking({
   rows,
   valor,
   subvalor,
+  tooltip,
 }: {
   titulo: string;
   rows: MonitoriaAgente[];
   valor: (row: MonitoriaAgente) => string;
   subvalor?: (row: MonitoriaAgente) => string;
+  tooltip: string;
 }) {
   return (
     <div className="surface overflow-hidden">
-      <div className="border-b border-border px-4 py-3">
+      <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
         <h3 className="font-display text-sm font-bold text-foreground">{titulo}</h3>
+        <InfoHint texto={tooltip} label={titulo} />
       </div>
       <div>
         {rows.map((row, index) => (
@@ -126,30 +161,35 @@ export function MonitoriaView({ filters }: { filters: DashboardFilters }) {
           agente={maiorTma?.agente}
           valor={formatarDuracao(maiorTma?.tma_segundos)}
           detalhe={`${n(maiorTma?.atendimentos_humanos)} atendimentos`}
+          tooltip="Maior Tempo Médio de Atendimento entre os consultores considerados. O TMA é calculado pela duração média dos atendimentos Humano + Misto do agente no período. Não é uma nota de qualidade; serve para apontar atendimentos potencialmente mais longos para análise."
         />
         <Destaque
           titulo="Maior % Rechamada"
           agente={maiorRechamada?.agente}
           valor={pct(maiorRechamada?.pct_rechamada)}
           detalhe={`${n(maiorRechamada?.rechamadas)} rechamadas`}
+          tooltip="Maior taxa de Rechamada entre os agentes com volume mínimo. Rechamada é calculada pelo sistema quando o mesmo telefone volta em menos de 24 horas. Fórmula: Rechamadas do agente ÷ Atendimentos Humano + Misto do agente × 100."
         />
         <Destaque
           titulo="Maior % Reincidência"
           agente={maiorReincidencia?.agente}
           valor={pct(maiorReincidencia?.pct_reincidencia)}
           detalhe={`${n(maiorReincidencia?.reincidentes)} reincidências`}
+          tooltip="Maior taxa de Reincidência entre os agentes com volume mínimo. Reincidência é calculada pelo sistema quando o mesmo telefone volta entre 1 e 30 dias. Fórmula: Reincidências do agente ÷ Atendimentos Humano + Misto do agente × 100."
         />
         <Destaque
           titulo="Maior % Inatividade"
           agente={maiorInatividade?.agente}
           valor={pct(maiorInatividade?.pct_inatividade)}
           detalhe={`${n(maiorInatividade?.inatividade)} finalizações`}
+          tooltip="Maior taxa de registros que a própria ASC marcou com Status = 'Finalizado por inatividade'. O portal não interpreta a conversa para concluir inatividade; apenas usa o status recebido da ASC. Fórmula: Finalizados por inatividade do agente ÷ Atendimentos Humano + Misto do agente × 100."
         />
         <Destaque
           titulo="Maior % Transferência"
           agente={maiorTransferencia?.agente}
           valor={pct(maiorTransferencia?.pct_transferencia)}
           detalhe={`${n(maiorTransferencia?.transferidos)} transferências`}
+          tooltip="Maior taxa de atendimentos com Status = 'Transferido' entre os agentes com volume mínimo. Fórmula: Atendimentos transferidos do agente ÷ Atendimentos Humano + Misto do agente × 100."
         />
       </div>
 
@@ -159,36 +199,42 @@ export function MonitoriaView({ filters }: { filters: DashboardFilters }) {
           rows={dados.volume.slice(0, 10)}
           valor={(r) => n(r.atendimentos_humanos)}
           subvalor={(r) => `TMA ${formatarDuracao(r.tma_segundos)}`}
+          tooltip="Ordena os consultores pela quantidade de atendimentos Humano + Misto no período. É um indicador de volume produtivo, não de qualidade."
         />
         <Ranking
           titulo="Maior TMA"
           rows={dados.tma.slice(0, 10)}
           valor={(r) => formatarDuracao(r.tma_segundos)}
           subvalor={(r) => `${n(r.atendimentos_humanos)} atendimentos humanos`}
+          tooltip="Ordena os consultores do maior para o menor Tempo Médio de Atendimento. O TMA considera os atendimentos Humano + Misto do agente no período."
         />
         <Ranking
           titulo="Maior taxa de Rechamada"
           rows={dados.rechamada.slice(0, 10)}
           valor={(r) => pct(r.pct_rechamada)}
           subvalor={(r) => `${n(r.rechamadas)} rechamadas de ${n(r.atendimentos_humanos)} atendimentos`}
+          tooltip="Ordena pela proporção de Rechamadas. O sistema identifica Rechamada quando o mesmo telefone retorna em menos de 24 horas. Fórmula: Rechamadas ÷ Atendimentos Humano + Misto × 100."
         />
         <Ranking
           titulo="Maior taxa de Reincidência"
           rows={dados.reincidencia.slice(0, 10)}
           valor={(r) => pct(r.pct_reincidencia)}
           subvalor={(r) => `${n(r.reincidentes)} reincidências de ${n(r.atendimentos_humanos)} atendimentos`}
+          tooltip="Ordena pela proporção de Reincidências. O sistema identifica Reincidência quando o mesmo telefone retorna entre 1 e 30 dias. Fórmula: Reincidências ÷ Atendimentos Humano + Misto × 100."
         />
         <Ranking
           titulo="Maior finalização por inatividade"
           rows={dados.inatividade.slice(0, 10)}
           valor={(r) => pct(r.pct_inatividade)}
           subvalor={(r) => `${n(r.inatividade)} casos`}
+          tooltip="Ordena pela proporção de atendimentos que vieram da ASC com Status = 'Finalizado por inatividade'. O portal apenas contabiliza esse status; não classifica a conversa por conta própria."
         />
         <Ranking
           titulo="Maior taxa de transferência"
           rows={dados.transferencia.slice(0, 10)}
           valor={(r) => pct(r.pct_transferencia)}
           subvalor={(r) => `${n(r.transferidos)} transferências`}
+          tooltip="Ordena pela proporção de atendimentos com Status = 'Transferido'. Fórmula: Transferidos ÷ Atendimentos Humano + Misto × 100."
         />
       </div>
     </div>
