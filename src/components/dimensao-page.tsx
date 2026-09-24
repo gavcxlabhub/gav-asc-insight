@@ -6,8 +6,9 @@ import type { DimensaoDetalhe } from "@/lib/dashboard-queries";
 const COLUNAS_PADRAO: { chave: ColunaChave; titulo: string }[] = [
   { chave: "total", titulo: "Volume" },
   { chave: "percentual", titulo: "%" },
-  { chave: "humanos", titulo: "Com Humano" },
-  { chave: "automaticos", titulo: "Automação" },
+  { chave: "humanos", titulo: "Atendido por Humano" },
+  { chave: "automaticos", titulo: "Resolvido pela IA" },
+  { chave: "pct_ia", titulo: "% Resolvido IA" },
   { chave: "ativos", titulo: "Ativos" },
   { chave: "receptivos", titulo: "Receptivos" },
   { chave: "tme_segundos", titulo: "TME" },
@@ -23,7 +24,7 @@ const COLUNAS_PADRAO: { chave: ColunaChave; titulo: string }[] = [
 const COLUNAS_AGENTE: { chave: ColunaChave; titulo: string }[] = [
   { chave: "total", titulo: "Volume" },
   { chave: "percentual", titulo: "%" },
-  { chave: "humanos", titulo: "Com Humano" },
+  { chave: "humanos", titulo: "Produtividade Humana" },
   { chave: "ativos", titulo: "Ativos" },
   { chave: "receptivos", titulo: "Receptivos" },
   { chave: "tme_segundos", titulo: "TME" },
