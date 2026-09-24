@@ -77,8 +77,11 @@ export function KpiCards({ filters }: { filters: DashboardFilters }) {
   const n = (v: number | null | undefined) => (v ?? 0).toLocaleString("pt-BR");
   const total = data?.total ?? 0;
   const comHumano = data?.com_humano ?? data?.humanos ?? 0;
-  const totalAutomacao = data?.automacao ?? ((data?.automaticos ?? 0) + (data?.notificacoes ?? 0));
-  const automacao = total ? (totalAutomacao / total) * 100 : 0;
+  const resolvidoIa = data?.automaticos ?? 0;
+  const notificacoes = data?.notificacoes ?? 0;
+  const elegiveisIa = comHumano + resolvidoIa;
+  const taxaIa = elegiveisIa ? (resolvidoIa / elegiveisIa) * 100 : 0;
+  const taxaHumano = elegiveisIa ? (comHumano / elegiveisIa) * 100 : 0;
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -89,18 +92,18 @@ export function KpiCards({ filters }: { filters: DashboardFilters }) {
         tooltip="Quantidade total de registros no período e filtros selecionados, incluindo Humano, Misto, Automático e Notificação."
       />
       <KpiCard
-        titulo="Com humano / Automação"
-        valor={`${n(comHumano)} / ${n(totalAutomacao)}`}
-        detalhe={`Automático: ${n(data?.automaticos)} · Notificação: ${n(data?.notificacoes)}`}
+        titulo="Humano / Resolvido pela IA"
+        valor={`${n(comHumano)} / ${n(resolvidoIa)}`}
+        detalhe={`Notificações: ${n(notificacoes)} · fora da taxa de resolução`}
         loading={isPending}
-        tooltip="Com Humano: atendimentos onde um agente humano participou (Humano + Misto). Automação: registros do tipo Automático + Notificação, sem participação humana."
+        tooltip="Atendimento humano: registros Humano + Misto, pois houve participação de consultor. Resolvido pela IA: somente registros totalmente Automáticos. Notificações ficam separadas."
       />
       <KpiCard
-        titulo="% Automação"
-        valor={`${automacao.toFixed(1).replace(".", ",")}%`}
-        detalhe={`${n(totalAutomacao)} registros de automação`}
+        titulo="% Resolvido pela IA"
+        valor={`${taxaIa.toFixed(1).replace(".", ",")}%`}
+        detalhe={`${taxaHumano.toFixed(1).replace(".", ",")}% encaminhados para humano`}
         loading={isPending}
-        tooltip="Percentual de registros sem participação humana, considerando os tipos Automático e Notificação informados pela ASC."
+        tooltip="Percentual de atendimentos elegíveis que terminaram totalmente no automático. Fórmula: Automático ÷ (Automático + Humano + Misto). Notificações não entram no cálculo."
       />
       <KpiCard
         titulo="Ativos / Receptivos"
