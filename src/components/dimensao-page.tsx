@@ -7,7 +7,7 @@ const COLUNAS_PADRAO: { chave: ColunaChave; titulo: string }[] = [
   { chave: "total", titulo: "Volume" },
   { chave: "percentual", titulo: "%" },
   { chave: "humanos", titulo: "Com Humano" },
-  { chave: "automaticos", titulo: "Automáticos" },
+  { chave: "automaticos", titulo: "Automação" },
   { chave: "ativos", titulo: "Ativos" },
   { chave: "receptivos", titulo: "Receptivos" },
   { chave: "tme_segundos", titulo: "TME" },
