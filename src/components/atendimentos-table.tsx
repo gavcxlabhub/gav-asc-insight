@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Download, Search } from "lucide-react";
-import { toast } from "sonner";
+import { Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ExportButton } from "@/components/export-button";
+import { exportDateSuffix, withDashboardFilters } from "@/lib/export-utils";
 import {
   Table,
   TableBody,
@@ -39,50 +40,17 @@ const COLUNAS: { chave: keyof AtendimentoLinha; titulo: string }[] = [
   { chave: "recorrencia_origem", titulo: "Recorrência" },
 ];
 
-function csvEscape(value: unknown) {
-  const s = value == null ? "" : String(value);
-  return `"${s.replace(/"/g, '""')}"`;
-}
-
 export function AtendimentosTable({ filters }: { filters: DashboardFilters }) {
   const [buscaInput, setBuscaInput] = useState("");
   const [busca, setBusca] = useState("");
   const [pagina, setPagina] = useState(1);
-  const [exportando, setExportando] = useState(false);
+
 
   const { data, isPending } = useQuery(atendimentosQuery(filters, busca, pagina, POR_PAGINA));
   const linhas = data ?? [];
   const total = Number(linhas[0]?.total_count ?? 0);
   const totalPaginas = Math.max(1, Math.ceil(total / POR_PAGINA));
 
-  const exportar = async () => {
-    setExportando(true);
-    try {
-      const dados = await buscarAtendimentosExport(filters, busca);
-      if (!dados.length) {
-        toast.info("Nenhum registro para exportar.");
-        return;
-      }
-      const cabecalho = COLUNAS.map((c) => c.titulo).join(";");
-      const corpo = dados
-        .map((linha) => COLUNAS.map((c) => csvEscape(linha[c.chave])).join(";"))
-        .join("\n");
-      const blob = new Blob([`\uFEFF${cabecalho}\n${corpo}`], {
-        type: "text/csv;charset=utf-8;",
-      });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `atendimentos-${new Date().toISOString().slice(0, 10)}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success(`${dados.length.toLocaleString("pt-BR")} registros exportados.`);
-    } catch (error) {
-      toast.error((error as Error).message);
-    } finally {
-      setExportando(false);
-    }
-  };
 
   const formatarData = (iso: string | null) =>
     iso ? new Date(iso).toLocaleString("pt-BR") : "—";
@@ -110,10 +78,23 @@ export function AtendimentosTable({ filters }: { filters: DashboardFilters }) {
               <Search className="size-4" />
             </Button>
           </form>
-          <Button variant="outline" onClick={exportar} disabled={exportando}>
-            <Download className="mr-2 size-4" />
-            Exportar CSV
-          </Button>
+          <ExportButton
+            filename={`gav-atendimentos-detalhados-${exportDateSuffix()}`}
+            sheetName="Atendimentos detalhados"
+            fetchData={async () => {
+              const dados = await buscarAtendimentosExport(filters, busca);
+              return withDashboardFilters(
+                filters,
+                dados.map((linha) => {
+                  const row: Record<string, unknown> = {};
+                  for (const coluna of COLUNAS) {
+                    row[coluna.titulo] = linha[coluna.chave];
+                  }
+                  return row;
+                }),
+              );
+            }}
+          />
         </div>
       </div>
 
