@@ -87,10 +87,13 @@ export type Database = {
           status?: string | null
           tag?: string | null
           telefone?: string | null
+          telefone_normalizado?: string | null
           tempo_atendimento?: string | null
+          tempo_atendimento_automatico?: string | null
           tempo_em_fila?: string | null
           tempo_pendencia?: string | null
           tipo?: string | null
+          recorrencia_sistema?: string | null
           tmia?: string | null
           tmic?: string | null
         }
@@ -125,10 +128,13 @@ export type Database = {
           status?: string | null
           tag?: string | null
           telefone?: string | null
+          telefone_normalizado?: string | null
           tempo_atendimento?: string | null
+          tempo_atendimento_automatico?: string | null
           tempo_em_fila?: string | null
           tempo_pendencia?: string | null
           tipo?: string | null
+          recorrencia_sistema?: string | null
           tmia?: string | null
           tmic?: string | null
         }
