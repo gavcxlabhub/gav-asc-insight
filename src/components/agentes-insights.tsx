@@ -189,6 +189,7 @@ export function AgentesInsights({ filters }: { filters: DashboardFilters }) {
                 <th className="px-4 py-3 text-right font-medium">Reincidências</th>
                 <th className="px-4 py-3 text-right font-medium">% Reincidência</th>
                 <th className="px-4 py-3 text-right font-medium">% Inatividade</th>
+                <th className="px-4 py-3 text-right font-medium">Transferências</th>
                 <th className="px-4 py-3 text-right font-medium">% Transferência</th>
               </tr>
             </thead>
@@ -203,6 +204,7 @@ export function AgentesInsights({ filters }: { filters: DashboardFilters }) {
                   <td className="px-4 py-2.5 text-right tabular-nums">{n(row.reincidentes)}</td>
                   <td className="px-4 py-2.5 text-right tabular-nums">{pct(row.pct_reincidencia)}</td>
                   <td className="px-4 py-2.5 text-right tabular-nums">{pct(row.pct_inatividade)}</td>
+                  <td className="px-4 py-2.5 text-right tabular-nums">{n(row.transferidos)}</td>
                   <td className="px-4 py-2.5 text-right tabular-nums">{pct(row.pct_transferencia)}</td>
                 </tr>
               ))}
