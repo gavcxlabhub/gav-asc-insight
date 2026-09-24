@@ -54,6 +54,10 @@ const FIELD_ALIASES: Record<string, string[]> = {
   data_fila: ["datafila", "datadefila"],
   tempo_em_fila: ["tempoemfila", "tempofila"],
   tempo_atendimento: ["tempoatendimento", "tempodeatendimento"],
+  tempo_atendimento_automatico: [
+    "tempoatendimentoautomatico",
+    "tempodeatendimentoautomatico",
+  ],
   tempo_pendencia: ["tempopendencia", "tempodependencia"],
   tmic: ["tmic"],
   tmia: ["tmia"],
@@ -146,19 +150,11 @@ export function normalizeAtivoReceptivo(value: unknown): string | null {
   return null;
 }
 
-async function sha256Hex(input: string): Promise<string> {
-  const bytes = new TextEncoder().encode(input);
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
-  return Array.from(new Uint8Array(digest))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
 export interface AtendimentoRow {
   [key: string]: string | null | Record<string, unknown>;
 }
 
-async function buildRow(
+function buildRow(
   raw: Record<string, unknown>,
   arquivo: string,
 ): Promise<AtendimentoRow | null> {
@@ -170,20 +166,27 @@ async function buildRow(
   };
 
   const telefone = raw["telefone"] === undefined ? null : String(raw["telefone"]).trim();
+  const telefoneNormalizado = normalizePhone(telefone);
   const dataEntrada = toIsoDate(raw["data_entrada"]);
   const protocolo = text("protocolo");
   const conta = text("conta");
   const agente = text("agente");
+  const ativoReceptivo = normalizeAtivoReceptivo(raw["ativo_receptivo"]);
 
   if (!protocolo && !telefone && !dataEntrada) return null;
 
-  // Chave: protocolo + agente — preserva múltiplos atendimentos do mesmo protocolo
-  // com agentes diferentes (ex: transferências entre consultores)
-  const key = protocolo
-    ? `${protocolo.trim().toLowerCase()}|${(agente ?? "").trim().toLowerCase()}`
-    : await sha256Hex(
-        [normalizePhone(telefone), dataEntrada ?? "", conta ?? ""].join("|"),
-      );
+  // Chave técnica estável para o relatório analítico atual da ASC.
+  // O mesmo protocolo pode aparecer mais de uma vez para o mesmo agente
+  // (transferência, mudança de serviço/status etc.), então protocolo+agente
+  // não é suficiente para identificar uma linha única.
+  const key = [
+    (protocolo ?? "").trim().toLowerCase(),
+    telefoneNormalizado,
+    dataEntrada ?? "",
+    (conta ?? "").trim().toLowerCase(),
+    (agente ?? "").trim().toLowerCase(),
+    (ativoReceptivo ?? "").trim().toLowerCase(),
+  ].join("|");
 
   return {
     protocolo,
@@ -193,6 +196,7 @@ async function buildRow(
     servico: text("servico"),
     contato: text("contato"),
     telefone: telefone && telefone !== "" ? telefone : null,
+    telefone_normalizado: telefoneNormalizado || null,
     numero_externo: text("numero_externo"),
     canal: text("canal") ?? "Whatsapp",
     data_entrada: dataEntrada,
@@ -202,12 +206,13 @@ async function buildRow(
     primeira_mensagem_agente: toIsoDate(raw["primeira_mensagem_agente"]),
     tempo_em_fila: text("tempo_em_fila"),
     tempo_atendimento: text("tempo_atendimento"),
+    tempo_atendimento_automatico: text("tempo_atendimento_automatico"),
     tempo_pendencia: text("tempo_pendencia"),
     tmic: text("tmic"),
     tmia: text("tmia"),
     status: text("status"),
     tipo: text("tipo"),
-    ativo_receptivo: normalizeAtivoReceptivo(raw["ativo_receptivo"]),
+    ativo_receptivo: ativoReceptivo,
     classificacao_origem: text("classificacao_origem"),
     recorrencia_origem: text("recorrencia_origem"),
     tag: text("tag"),
@@ -222,7 +227,7 @@ async function buildRow(
   };
 }
 
-const BATCH_SIZE = 200;
+const BATCH_SIZE = 500;
 
 export async function importAscFile(
   file: File,
@@ -270,7 +275,7 @@ export async function importAscFile(
       const value = row[Number(indexStr)];
       raw[field] = DATE_FIELDS.has(field) ? value : value;
     }
-    const built = await buildRow(raw, file.name);
+    const built = buildRow(raw, file.name);
     if (!built) {
       invalidos += 1;
     } else {
@@ -340,6 +345,21 @@ export async function importAscFile(
     .from("importacoes")
     .update({ registros_novos: novosRows.length, duplicados, invalidos })
     .eq("id", importacaoId);
+
+  if (novosRows.length > 0) {
+    onProgress({
+      stage: "salvando",
+      processed: novosRows.length,
+      total: novosRows.length,
+      message: "Atualizando indicadores de recorrência…",
+    });
+    const { error: recorrenciaError } = await (supabase as any).rpc(
+      "recalcular_recorrencia_sistema",
+    );
+    if (recorrenciaError) {
+      throw new Error(`Falha ao atualizar recorrência: ${recorrenciaError.message}`);
+    }
+  }
 
   onProgress({ stage: "concluido", processed: novosRows.length, total: novosRows.length });
 

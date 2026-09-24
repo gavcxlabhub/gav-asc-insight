@@ -46,10 +46,13 @@ export type Database = {
           status: string | null
           tag: string | null
           telefone: string | null
+          telefone_normalizado: string | null
           tempo_atendimento: string | null
+          tempo_atendimento_automatico: string | null
           tempo_em_fila: string | null
           tempo_pendencia: string | null
           tipo: string | null
+          recorrencia_sistema: string | null
           tmia: string | null
           tmic: string | null
         }
@@ -84,10 +87,13 @@ export type Database = {
           status?: string | null
           tag?: string | null
           telefone?: string | null
+          telefone_normalizado?: string | null
           tempo_atendimento?: string | null
+          tempo_atendimento_automatico?: string | null
           tempo_em_fila?: string | null
           tempo_pendencia?: string | null
           tipo?: string | null
+          recorrencia_sistema?: string | null
           tmia?: string | null
           tmic?: string | null
         }
@@ -122,10 +128,13 @@ export type Database = {
           status?: string | null
           tag?: string | null
           telefone?: string | null
+          telefone_normalizado?: string | null
           tempo_atendimento?: string | null
+          tempo_atendimento_automatico?: string | null
           tempo_em_fila?: string | null
           tempo_pendencia?: string | null
           tipo?: string | null
+          recorrencia_sistema?: string | null
           tmia?: string | null
           tmic?: string | null
         }
@@ -397,6 +406,38 @@ export type Database = {
           p_tipo?: string
         }
         Returns: Json
+      }
+      get_kpis_comparativo: {
+        Args: {
+          p_agente?: string
+          p_ativo_receptivo?: string
+          p_conta?: string
+          p_data_fim: string
+          p_data_inicio: string
+          p_servico?: string
+          p_status?: string
+          p_tipo?: string
+        }
+        Returns: Json
+      }
+      get_agrupado_tipo: {
+        Args: {
+          p_agente?: string
+          p_ativo_receptivo?: string
+          p_conta?: string
+          p_data_fim: string
+          p_data_inicio: string
+          p_recorrencia?: string
+          p_servico?: string
+          p_status?: string
+          p_tipo?: string
+        }
+        Returns: {
+          humanos: number
+          receptivos: number
+          rotulo: string
+          total: number
+        }[]
       }
       get_recorrencia_periodo: {
         Args: {
