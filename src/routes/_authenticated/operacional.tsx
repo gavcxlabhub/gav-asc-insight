@@ -239,7 +239,7 @@ function OperacionalPage() {
               detalhe={`${pct(status.data?.pct_inatividade)} do total`}
               cor="text-amber-400"
               filters={filters}
-              tooltip="Atendimentos encerrados automaticamente porque o cliente parou de responder. Alta taxa pode indicar demora no retorno do agente ou cliente não encontrou o que precisava."
+              tooltip="Atendimentos cuja própria ASC informa o Status = 'Finalizado por inatividade'. O portal não interpreta a conversa para classificar a inatividade; apenas contabiliza o status recebido da ASC."
             />
             <KpiCard
               titulo="Transferidos"
