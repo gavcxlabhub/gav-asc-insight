@@ -2,6 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Bar, BarChart, CartesianGrid, Line, LineChart, Tooltip, XAxis, YAxis } from "recharts";
 
 import { Skeleton } from "@/components/ui/skeleton";
+import { ExportButton } from "@/components/export-button";
+import { exportDateSuffix, withDashboardFilters } from "@/lib/export-utils";
 import {
   AXIS_TICK,
   AnalyticsChartCard,
@@ -30,9 +32,26 @@ function Heatmap({ filters }: { filters: DashboardFilters }) {
 
   return (
     <div className="surface p-5">
-      <h3 className="mb-4 font-display text-sm font-bold text-foreground">
-        Mapa de calor — dia da semana × hora
-      </h3>
+      <div className="mb-4 flex items-center justify-between gap-2">
+        <h3 className="font-display text-sm font-bold text-foreground">
+          Mapa de calor — dia da semana × hora
+        </h3>
+        <ExportButton
+          compact
+          filename={`gav-mapa-calor-${exportDateSuffix()}`}
+          sheetName="Mapa de calor"
+          fetchData={() =>
+            withDashboardFilters(
+              filters,
+              celulas.map((row) => ({
+                "Dia da semana": DIAS.find((d) => d.id === row.dia_semana)?.label ?? row.dia_semana,
+                Hora: `${row.hora}h`,
+                Atendimentos: Number(row.total),
+              })),
+            )
+          }
+        />
+      </div>
       {isPending ? (
         <Skeleton className="h-64 w-full" />
       ) : celulas.length === 0 ? (
@@ -109,6 +128,11 @@ export function HorariosView({ filters }: { filters: DashboardFilters }) {
           loading={horas.isPending}
           vazio={semHora}
           altura={300}
+          exportRows={withDashboardFilters(
+            filters,
+            dadosHora.map((row) => ({ Hora: row.hora, Atendimentos: Number(row.total) })),
+          )}
+          exportFilename={`gav-volume-hora-${exportDateSuffix()}`}
         >
           <LineChart data={dadosHora} margin={{ left: 4, right: 16 }}>
             <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
@@ -131,6 +155,11 @@ export function HorariosView({ filters }: { filters: DashboardFilters }) {
           loading={semana.isPending}
           vazio={semSemana}
           altura={300}
+          exportRows={withDashboardFilters(
+            filters,
+            dadosSemana.map((row) => ({ "Dia da semana": row.dia, Atendimentos: Number(row.total) })),
+          )}
+          exportFilename={`gav-volume-dia-semana-${exportDateSuffix()}`}
         >
           <BarChart data={dadosSemana} margin={{ left: 4, right: 16 }}>
             <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
