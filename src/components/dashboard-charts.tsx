@@ -18,6 +18,8 @@ import {
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { ExportButton } from "@/components/export-button";
+import { exportDateSuffix, withDashboardFilters } from "@/lib/export-utils";
 import {
   agrupadoQuery,
   agrupadoTipoQuery,
@@ -69,14 +71,25 @@ interface ChartCardProps {
   acoes?: ReactNode;
   children: ReactNode;
   altura?: number;
+  exportRows?: Record<string, unknown>[];
 }
 
-function ChartCard({ titulo, loading, vazio, acoes, children, altura = 280 }: ChartCardProps) {
+function ChartCard({ titulo, loading, vazio, acoes, children, altura = 280, exportRows }: ChartCardProps) {
   return (
     <div className="surface p-5">
       <div className="mb-4 flex items-center justify-between gap-2">
         <h3 className="font-display text-sm font-bold text-foreground">{titulo}</h3>
-        {acoes}
+        <div className="flex items-center gap-2">
+          {acoes}
+          {exportRows && exportRows.length > 0 ? (
+            <ExportButton
+              compact
+              filename={`gav-${titulo}-${exportDateSuffix()}`}
+              sheetName={titulo}
+              fetchData={() => exportRows}
+            />
+          ) : null}
+        </div>
       </div>
       {loading ? (
         <Skeleton style={{ height: altura }} className="w-full" />
@@ -117,6 +130,15 @@ function BarrasHorizontais({
       loading={isPending}
       vazio={dados.length === 0}
       altura={Math.max(280, dados.length * 26)}
+      exportRows={withDashboardFilters(
+        filters,
+        dados.map((d) => ({
+          Categoria: d.rotulo,
+          Atendimentos: Number(d.total),
+          "Atendidos por humano": Number(d.humanos ?? 0),
+          Receptivos: Number(d.receptivos ?? 0),
+        })),
+      )}
     >
       <BarChart data={dados} layout="vertical" margin={{ left: 12, right: 16 }}>
         <CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.3} />
@@ -141,7 +163,15 @@ function Donut({
   const { data, isPending } = useQuery(agrupadoQuery(filters, dimensao, 12));
   const dados = (data ?? []).map((d) => ({ name: d.rotulo, value: Number(d.total) }));
   return (
-    <ChartCard titulo={titulo} loading={isPending} vazio={dados.length === 0}>
+    <ChartCard
+      titulo={titulo}
+      loading={isPending}
+      vazio={dados.length === 0}
+      exportRows={withDashboardFilters(
+        filters,
+        dados.map((d) => ({ Categoria: d.name, Atendimentos: d.value })),
+      )}
+    >
       <PieChart>
         <Pie data={dados} dataKey="value" nameKey="name" innerRadius={55} outerRadius={95}>
           {dados.map((_, i) => (
@@ -159,7 +189,15 @@ function DonutTipo({ filters }: { filters: DashboardFilters }) {
   const { data, isPending } = useQuery(agrupadoTipoQuery(filters));
   const dados = (data ?? []).map((d) => ({ name: d.rotulo, value: Number(d.total) }));
   return (
-    <ChartCard titulo="Atendido por Humano × Resolvido pela IA" loading={isPending} vazio={dados.length === 0}>
+    <ChartCard
+      titulo="Atendido por Humano × Resolvido pela IA"
+      loading={isPending}
+      vazio={dados.length === 0}
+      exportRows={withDashboardFilters(
+        filters,
+        dados.map((d) => ({ Categoria: d.name, Atendimentos: d.value })),
+      )}
+    >
       <PieChart>
         <Pie data={dados} dataKey="value" nameKey="name" innerRadius={55} outerRadius={95}>
           {dados.map((_, i) => (
@@ -189,6 +227,15 @@ function EvolucaoVolume({ filters }: { filters: DashboardFilters }) {
       loading={isPending}
       vazio={dados.length === 0}
       altura={320}
+      exportRows={withDashboardFilters(
+        filters,
+        dados.map((d) => ({
+          Período: d.periodo,
+          Total: d.total,
+          "Atendido por Humano": d.humanos,
+          "Resolvido pela IA": d.automaticos,
+        })),
+      )}
       acoes={
         <div className="flex gap-1">
           {(["dia", "mes"] as const).map((g) => (
@@ -248,6 +295,15 @@ function RecorrenciaPorPeriodo({ filters }: { filters: DashboardFilters }) {
       loading={isPending}
       vazio={dados.length === 0}
       altura={300}
+      exportRows={withDashboardFilters(
+        filters,
+        dados.map((d) => ({
+          Período: d.periodo,
+          Rechamadas: d.rechamadas,
+          Recorrentes: d.recorrentes,
+          Reincidentes: d.reincidentes,
+        })),
+      )}
       acoes={
         <div className="flex gap-1">
           {(["dia", "mes"] as const).map((g) => (
@@ -281,7 +337,15 @@ function VolumePorHora({ filters }: { filters: DashboardFilters }) {
   const { data, isPending } = useQuery(agrupadoQuery(filters, "hora", 24));
   const dados = (data ?? []).map((d) => ({ hora: `${d.rotulo}h`, total: Number(d.total) }));
   return (
-    <ChartCard titulo="Volume por hora do dia" loading={isPending} vazio={dados.length === 0}>
+    <ChartCard
+      titulo="Volume por hora do dia"
+      loading={isPending}
+      vazio={dados.length === 0}
+      exportRows={withDashboardFilters(
+        filters,
+        dados.map((d) => ({ Hora: d.hora, Atendimentos: d.total })),
+      )}
+    >
       <LineChart data={dados} margin={{ left: 4, right: 16 }}>
         <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
         <XAxis dataKey="hora" tick={{ fontSize: 11 }} />
@@ -300,7 +364,15 @@ function VolumePorDiaSemana({ filters }: { filters: DashboardFilters }) {
     total: Number(d.total),
   }));
   return (
-    <ChartCard titulo="Volume por dia da semana" loading={isPending} vazio={dados.length === 0}>
+    <ChartCard
+      titulo="Volume por dia da semana"
+      loading={isPending}
+      vazio={dados.length === 0}
+      exportRows={withDashboardFilters(
+        filters,
+        dados.map((d) => ({ "Dia da semana": d.dia, Atendimentos: d.total })),
+      )}
+    >
       <BarChart data={dados} margin={{ left: 4, right: 16 }}>
         <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
         <XAxis dataKey="dia" tick={{ fontSize: 11 }} />
