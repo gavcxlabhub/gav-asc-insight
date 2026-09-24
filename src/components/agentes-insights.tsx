@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ExportButton } from "@/components/export-button";
+import { exportDateSuffix, withDashboardFilters } from "@/lib/export-utils";
 import {
   formatarDuracao,
   monitoriaAgentesQuery,
@@ -12,15 +14,43 @@ function TopLista({
   titulo,
   rows,
   valor,
+  filters,
 }: {
   titulo: string;
   rows: MonitoriaAgente[];
   valor: (row: MonitoriaAgente) => string;
+  filters: DashboardFilters;
 }) {
   return (
     <div className="surface overflow-hidden">
-      <div className="border-b border-border px-4 py-3">
+      <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
         <h3 className="font-display text-sm font-bold text-foreground">{titulo}</h3>
+        <ExportButton
+          compact
+          filename={`gav-agentes-${titulo}-${exportDateSuffix()}`}
+          sheetName={titulo}
+          fetchData={() =>
+            withDashboardFilters(
+              filters,
+              rows.map((row, index) => ({
+                Posição: index + 1,
+                Agente: row.agente,
+                "Atendimentos humanos": row.atendimentos_humanos,
+                TMA: formatarDuracao(row.tma_segundos),
+                Rechamadas: row.rechamadas,
+                "% Rechamada": row.pct_rechamada,
+                Reincidências: row.reincidentes,
+                "% Reincidência": row.pct_reincidencia,
+                Recorrências: row.recorrentes,
+                "% Recorrência": row.pct_recorrencia,
+                Inatividade: row.inatividade,
+                "% Inatividade": row.pct_inatividade,
+                Transferências: row.transferidos,
+                "% Transferência": row.pct_transferencia,
+              })),
+            )
+          }
+        />
       </div>
       <div>
         {rows.map((row, index) => (
@@ -90,31 +120,62 @@ export function AgentesInsights({ filters }: { filters: DashboardFilters }) {
         <TopLista
           titulo="Top produtividade humana"
           rows={rankings.produtividade}
+          filters={filters}
           valor={(r) => `${n(r.atendimentos_humanos)} atend.`}
         />
         <TopLista
           titulo="Maiores TMA"
           rows={rankings.tma}
+          filters={filters}
           valor={(r) => formatarDuracao(r.tma_segundos)}
         />
         <TopLista
           titulo="Maiores taxas de Rechamada"
           rows={rankings.rechamada}
+          filters={filters}
           valor={(r) => pct(r.pct_rechamada)}
         />
         <TopLista
           titulo="Maiores taxas de Reincidência"
           rows={rankings.reincidencia}
+          filters={filters}
           valor={(r) => pct(r.pct_reincidencia)}
         />
       </div>
 
       <div className="surface overflow-hidden">
-        <div className="border-b border-border px-4 py-3">
-          <h3 className="font-display text-sm font-bold text-foreground">Visão consolidada por agente</h3>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Recorrência usa o cálculo do sistema por telefone.
-          </p>
+        <div className="flex items-start justify-between gap-3 border-b border-border px-4 py-3">
+          <div>
+            <h3 className="font-display text-sm font-bold text-foreground">Visão consolidada por agente</h3>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Recorrência usa o cálculo do sistema por telefone.
+            </p>
+          </div>
+          <ExportButton
+            compact
+            filename={`gav-visao-agentes-${exportDateSuffix()}`}
+            sheetName="Visão por agente"
+            fetchData={() =>
+              withDashboardFilters(
+                filters,
+                rows.map((row) => ({
+                  Agente: row.agente,
+                  Produtividade: row.atendimentos_humanos,
+                  TMA: formatarDuracao(row.tma_segundos),
+                  Rechamadas: row.rechamadas,
+                  "% Rechamada": row.pct_rechamada,
+                  Reincidências: row.reincidentes,
+                  "% Reincidência": row.pct_reincidencia,
+                  Recorrências: row.recorrentes,
+                  "% Recorrência": row.pct_recorrencia,
+                  Inatividade: row.inatividade,
+                  "% Inatividade": row.pct_inatividade,
+                  Transferências: row.transferidos,
+                  "% Transferência": row.pct_transferencia,
+                })),
+              )
+            }
+          />
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1100px] text-left text-sm">
