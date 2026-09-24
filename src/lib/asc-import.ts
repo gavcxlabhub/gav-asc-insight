@@ -295,7 +295,8 @@ export async function importAscFile(
 
   onProgress({ stage: "duplicatas", processed: parsed.length, total: parsed.length });
   const novosRows = parsed;
-  const duplicados = duplicadosArquivo;
+  let inseridos = 0;
+  let duplicados = duplicadosArquivo;
 
   const datas = parsed
     .map((r) => r["data_entrada"] as string | null)
@@ -311,8 +312,8 @@ export async function importAscFile(
       periodo_inicio: periodoInicio,
       periodo_fim: periodoFim,
       total_lido: dataRows.length,
-      registros_novos: novosRows.length,
-      duplicados,
+      registros_novos: 0,
+      duplicados: duplicadosArquivo,
       invalidos,
       usuario_id: userId,
     })
@@ -329,10 +330,12 @@ export async function importAscFile(
       ...r,
       importacao_id: importacaoId,
     }));
-    const { error } = await supabase
+    const { data: inseridosBatch, error } = await supabase
       .from("atendimentos")
-      .upsert(batch as any, { onConflict: "source_record_key", ignoreDuplicates: true });
+      .upsert(batch as any, { onConflict: "source_record_key", ignoreDuplicates: true })
+      .select("source_record_key");
     if (error) throw new Error(`[${(error as any).code}] ${error.message}`);
+    inseridos += inseridosBatch?.length ?? 0;
     onProgress({
       stage: "salvando",
       processed: Math.min(i + BATCH_SIZE, novosRows.length),
@@ -341,12 +344,15 @@ export async function importAscFile(
     await new Promise((r) => setTimeout(r, 50));
   }
 
+  const duplicadosBanco = Math.max(0, novosRows.length - inseridos);
+  duplicados += duplicadosBanco;
+
   await supabase
     .from("importacoes")
-    .update({ registros_novos: novosRows.length, duplicados, invalidos })
+    .update({ registros_novos: inseridos, duplicados, invalidos })
     .eq("id", importacaoId);
 
-  if (novosRows.length > 0) {
+  if (inseridos > 0) {
     onProgress({
       stage: "salvando",
       processed: novosRows.length,
@@ -365,7 +371,7 @@ export async function importAscFile(
 
   return {
     totalLido: dataRows.length,
-    novos: novosRows.length,
+    novos: inseridos,
     duplicados,
     invalidos,
     periodoInicio,
