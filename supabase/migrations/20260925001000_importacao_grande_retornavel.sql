@@ -28,6 +28,22 @@ CREATE INDEX IF NOT EXISTS idx_recorrencia_queue_pendente
 CREATE INDEX IF NOT EXISTS idx_recorrencia_queue_clientes_pendente
   ON public.recorrencia_processamento_queue (importacao_id, clientes_processado);
 
+DO $
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'recorrencia_processamento_queue_importacao_fkey'
+  ) THEN
+    ALTER TABLE public.recorrencia_processamento_queue
+      ADD CONSTRAINT recorrencia_processamento_queue_importacao_fkey
+      FOREIGN KEY (importacao_id)
+      REFERENCES public.importacoes(id)
+      ON DELETE CASCADE;
+  END IF;
+END
+$;
+
 REVOKE ALL ON public.recorrencia_processamento_queue FROM PUBLIC, anon, authenticated;
 GRANT ALL ON public.recorrencia_processamento_queue TO service_role;
 
