@@ -30,7 +30,7 @@ function RecorrenciaPage() {
     <>
       <PageHeader
         title="Recorrência"
-        description="Comportamento de retorno dos contatos, preservando a recorrência original da ASC."
+        description="Comportamento de retorno dos contatos: cálculo do sistema, referência da ASC e frequência por cliente."
       />
       <Filters state={state} onChange={setState} />
       <RecorrenciaView filters={filters} />

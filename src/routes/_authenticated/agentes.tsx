@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { DimensaoPage } from "@/components/dimensao-page";
+import { PageHeader } from "@/components/page-header";
+import { Filters, useDashboardFilters } from "@/components/filters";
+import { AgentesInsights } from "@/components/agentes-insights";
 
 export const Route = createFileRoute("/_authenticated/agentes")({
   head: () => ({
@@ -8,24 +10,26 @@ export const Route = createFileRoute("/_authenticated/agentes")({
       { title: "Agentes — GAV ASC Analytics" },
       {
         name: "description",
-        content: "Produtividade e tempos de resposta por agente nos atendimentos WhatsApp.",
+        content: "Produtividade, TMA, rechamadas e reincidências por agente.",
       },
       { property: "og:title", content: "Agentes — GAV ASC Analytics" },
-      {
-        property: "og:description",
-        content: "Produtividade e tempos de resposta por agente.",
-      },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: () => (
-    <DimensaoPage
-      titulo="Agentes"
-      descricao="Desempenho individual da equipe de atendimento."
-      dimensao="agente"
-      rotuloColuna="Agente"
-      excluirVazios
-    />
-  ),
+  component: AgentesPage,
 });
+
+function AgentesPage() {
+  const { state, setState, filters } = useDashboardFilters();
+
+  return (
+    <>
+      <PageHeader
+        title="Agentes"
+        description="Produtividade humana e indicadores de acompanhamento por consultor."
+      />
+      <Filters state={state} onChange={setState} />
+      <AgentesInsights filters={filters} />
+    </>
+  );
+}

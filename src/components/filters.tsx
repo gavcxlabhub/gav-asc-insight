@@ -221,8 +221,8 @@ export function Filters({ state, onChange }: FiltersProps) {
           value={state.tipo}
           onChange={(v) => set({ tipo: v })}
           options={[
-            { value: "Com Humano", label: "Com Humano" },
-            { value: "Automação", label: "Automação (Automático + Notificação)" },
+            { value: "Com Humano", label: "Atendido por Humano (Humano + Misto)" },
+            { value: "Automação", label: "Resolvido pela IA (Automático)" },
             { value: "Automático", label: "Automático" },
             { value: "Notificação", label: "Notificação" },
           ]}

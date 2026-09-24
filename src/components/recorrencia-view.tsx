@@ -13,6 +13,7 @@ import {
 } from "recharts";
 
 import { Button } from "@/components/ui/button";
+import { FrequenciaContatos } from "@/components/frequencia-contatos";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   AXIS_TICK,
@@ -81,7 +82,9 @@ function RankingRecorrencia({
   tipo: TipoRecorrencia;
 }) {
   const { data, isPending } = useQuery(recorrenciaDimensaoQuery(filters, dimensao, tipo, 10));
-  const dados = (data ?? []).filter((d) => d.com_recorrencia > 0);
+  const dados = (data ?? []).filter(
+    (d) => d.com_recorrencia > 0 && !(dimensao === "agente" && d.rotulo === "Sem agente"),
+  );
   return (
     <AnalyticsChartCard
       titulo={titulo}
@@ -221,7 +224,21 @@ export function RecorrenciaView({ filters }: { filters: DashboardFilters }) {
           dimensao="servico"
           tipo="reincid"
         />
+        <RankingRecorrencia
+          titulo="Top 10 agentes — Rechamada"
+          filters={filters}
+          dimensao="agente"
+          tipo="rechamada"
+        />
+        <RankingRecorrencia
+          titulo="Top 10 agentes — Reincidência"
+          filters={filters}
+          dimensao="agente"
+          tipo="reincid"
+        />
       </div>
+
+      <FrequenciaContatos filters={filters} />
     </div>
   );
 }

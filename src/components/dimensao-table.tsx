@@ -18,6 +18,7 @@ export type ColunaChave =
   | "humanos"
   | "mistos"
   | "automaticos"
+  | "pct_ia"
   | "ativos"
   | "receptivos"
   | "rechamadas"
@@ -49,6 +50,10 @@ function getCellValue(row: DetalheDimensaoLinha & { percentual_total?: number },
     case "humanos": return (row.humanos ?? 0).toLocaleString("pt-BR");
     case "mistos": return (row.mistos ?? 0).toLocaleString("pt-BR");
     case "automaticos": return (row.automaticos ?? 0).toLocaleString("pt-BR");
+    case "pct_ia": {
+      const elegiveis = (row.automaticos ?? 0) + (row.humanos ?? 0);
+      return percentual(row.automaticos ?? 0, elegiveis);
+    }
     case "ativos": return (row.ativos ?? 0).toLocaleString("pt-BR");
     case "receptivos": return (row.receptivos ?? 0).toLocaleString("pt-BR");
     case "rechamadas": return (row.rechamadas ?? 0).toLocaleString("pt-BR");
@@ -69,6 +74,10 @@ function getSortValue(row: DetalheDimensaoLinha, chave: ColunaChave): number {
     case "humanos": return row.humanos ?? 0;
     case "mistos": return row.mistos ?? 0;
     case "automaticos": return row.automaticos ?? 0;
+    case "pct_ia": {
+      const elegiveis = (row.automaticos ?? 0) + (row.humanos ?? 0);
+      return elegiveis ? (row.automaticos ?? 0) / elegiveis : 0;
+    }
     case "ativos": return row.ativos ?? 0;
     case "receptivos": return row.receptivos ?? 0;
     case "rechamadas": return row.rechamadas ?? 0;

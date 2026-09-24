@@ -139,19 +139,24 @@ export const agrupadoTipoQuery = (f: DashboardFilters) =>
       });
 
       let comHumano = 0;
-      let automacao = 0;
+      let resolvidoIa = 0;
+      let notificacoes = 0;
       let outros = 0;
 
       for (const row of rows ?? []) {
         if (row.rotulo === "Humano" || row.rotulo === "Misto") comHumano += Number(row.total ?? 0);
-        else if (row.rotulo === "Automático" || row.rotulo === "Notificação") automacao += Number(row.total ?? 0);
+        else if (row.rotulo === "Automático") resolvidoIa += Number(row.total ?? 0);
+        else if (row.rotulo === "Notificação") notificacoes += Number(row.total ?? 0);
         else outros += Number(row.total ?? 0);
       }
 
       const result: GrupoPonto[] = [
-        { rotulo: "Com Humano", total: comHumano, humanos: comHumano, receptivos: 0 },
-        { rotulo: "Automação", total: automacao, humanos: 0, receptivos: 0 },
+        { rotulo: "Atendido por Humano", total: comHumano, humanos: comHumano, receptivos: 0 },
+        { rotulo: "Resolvido pela IA", total: resolvidoIa, humanos: 0, receptivos: 0 },
       ];
+      if (notificacoes > 0) {
+        result.push({ rotulo: "Notificação", total: notificacoes, humanos: 0, receptivos: 0 });
+      }
       if (outros > 0) {
         result.push({ rotulo: "Outros", total: outros, humanos: 0, receptivos: 0 });
       }
@@ -332,5 +337,77 @@ export const heatmapQuery = (f: DashboardFilters) =>
         p_conta: f.conta,
         p_tipo: f.tipo,
         p_ativo_receptivo: f.ativoReceptivo,
+      }),
+  });
+
+
+export interface FrequenciaContatos {
+  clientes_unicos: number;
+  media_contatos: number;
+  um_contato: number;
+  dois_contatos: number;
+  tres_contatos: number;
+  quatro_mais: number;
+  cinco_mais: number;
+}
+
+export const frequenciaContatosQuery = (f: DashboardFilters) =>
+  queryOptions({
+    queryKey: ["frequencia-contatos", f],
+    staleTime: STALE_TIME,
+    queryFn: () =>
+      rpc<FrequenciaContatos>("get_frequencia_contatos", filtrosRpcArgs(f)),
+  });
+
+export interface TopClienteContato {
+  telefone_mascarado: string;
+  contatos: number;
+  rechamadas: number;
+  reincidentes: number;
+  recorrentes: number;
+  servico_principal: string | null;
+}
+
+export const topClientesContatosQuery = (f: DashboardFilters, limite = 15) =>
+  queryOptions({
+    queryKey: ["top-clientes-contatos", limite, f],
+    staleTime: STALE_TIME,
+    queryFn: () =>
+      rpc<TopClienteContato[]>("get_top_clientes_contatos", {
+        ...filtrosRpcArgs(f),
+        p_limite: limite,
+      }),
+  });
+
+export interface MonitoriaAgente {
+  agente: string;
+  atendimentos_humanos: number;
+  tma_segundos: number | null;
+  rechamadas: number;
+  pct_rechamada: number;
+  reincidentes: number;
+  pct_reincidencia: number;
+  recorrentes: number;
+  pct_recorrencia: number;
+  inatividade: number;
+  pct_inatividade: number;
+  transferidos: number;
+  pct_transferencia: number;
+}
+
+export const monitoriaAgentesQuery = (f: DashboardFilters, minAtendimentos = 20) =>
+  queryOptions({
+    queryKey: ["monitoria-agentes", minAtendimentos, f],
+    staleTime: STALE_TIME,
+    queryFn: () =>
+      rpc<MonitoriaAgente[]>("get_monitoria_agentes", {
+        p_data_inicio: f.dataInicio,
+        p_data_fim: f.dataFim,
+        p_conta: f.conta,
+        p_servico: f.servico,
+        p_agente: f.agente,
+        p_ativo_receptivo: f.ativoReceptivo,
+        p_status: f.status,
+        p_min_atendimentos: minAtendimentos,
       }),
   });
