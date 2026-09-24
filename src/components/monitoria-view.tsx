@@ -102,23 +102,26 @@ function Ranking({
 }
 
 export function MonitoriaView({ filters }: { filters: DashboardFilters }) {
-  const query = useQuery(monitoriaAgentesQuery(filters, 20));
+  const query = useQuery(monitoriaAgentesQuery(filters, 1));
   const pct = (v: number | null | undefined) =>
     `${Number(v ?? 0).toFixed(1).replace(".", ",")}%`;
   const n = (v: number | null | undefined) => (v ?? 0).toLocaleString("pt-BR");
 
   const dados = useMemo(() => {
     const rows = query.data ?? [];
-    const by = (getter: (r: MonitoriaAgente) => number) =>
-      [...rows].sort((a, b) => getter(b) - getter(a));
+    const elegiveisTaxa = rows.filter((r) => r.atendimentos_humanos >= 20);
+    const by = (lista: MonitoriaAgente[], getter: (r: MonitoriaAgente) => number) =>
+      [...lista].sort((a, b) => getter(b) - getter(a));
 
     return {
-      volume: by((r) => r.atendimentos_humanos),
-      tma: by((r) => r.tma_segundos ?? 0),
-      rechamada: by((r) => r.pct_rechamada),
-      reincidencia: by((r) => r.pct_reincidencia),
-      inatividade: by((r) => r.pct_inatividade),
-      transferencia: by((r) => r.pct_transferencia),
+      todos: rows,
+      elegiveisTaxa,
+      volume: by(rows, (r) => r.atendimentos_humanos),
+      tma: by(elegiveisTaxa, (r) => r.tma_segundos ?? 0),
+      rechamada: by(elegiveisTaxa, (r) => r.pct_rechamada),
+      reincidencia: by(elegiveisTaxa, (r) => r.pct_reincidencia),
+      inatividade: by(elegiveisTaxa, (r) => r.pct_inatividade),
+      transferencia: by(rows, (r) => r.transferidos),
     };
   }, [query.data]);
 
@@ -137,7 +140,7 @@ export function MonitoriaView({ filters }: { filters: DashboardFilters }) {
   if (rows.length === 0) {
     return (
       <div className="surface p-8 text-center text-sm text-muted-foreground">
-        Não há agentes com pelo menos 20 atendimentos humanos no período e filtros selecionados.
+        Não há agentes com atendimentos humanos no período e filtros selecionados.
       </div>
     );
   }
@@ -147,12 +150,15 @@ export function MonitoriaView({ filters }: { filters: DashboardFilters }) {
   const maiorReincidencia = dados.reincidencia[0];
   const maiorInatividade = dados.inatividade[0];
   const maiorTransferencia = dados.transferencia[0];
+  const totalTransferencias = dados.todos.reduce((acc, row) => acc + (row.transferidos ?? 0), 0);
+  const participacaoTransferencias = (row?: MonitoriaAgente) =>
+    totalTransferencias > 0 ? ((row?.transferidos ?? 0) / totalTransferencias) * 100 : 0;
 
   return (
     <div className="space-y-6">
       <div className="rounded-lg border border-amber-400/30 bg-amber-400/5 px-4 py-3 text-sm text-muted-foreground">
         Esta página não atribui nota ao consultor. Ela destaca <strong>sinais objetivos para direcionar amostras de monitoria</strong>.
-        Rankings de taxa consideram somente agentes com pelo menos 20 atendimentos Humano + Misto no período.
+        Rankings de taxa consideram somente agentes com pelo menos 20 atendimentos Humano + Misto no período. O ranking de transferências usa a quantidade absoluta de transferências realizadas por cada agente.
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
@@ -185,11 +191,11 @@ export function MonitoriaView({ filters }: { filters: DashboardFilters }) {
           tooltip="Maior taxa de registros que a própria ASC marcou com Status = 'Finalizado por inatividade'. O portal não interpreta a conversa para concluir inatividade; apenas usa o status recebido da ASC. Fórmula: Finalizados por inatividade do agente ÷ Atendimentos Humano + Misto do agente × 100."
         />
         <Destaque
-          titulo="Maior % Transferência"
+          titulo="Maior volume de transferências"
           agente={maiorTransferencia?.agente}
-          valor={pct(maiorTransferencia?.pct_transferencia)}
-          detalhe={`${n(maiorTransferencia?.transferidos)} transferências`}
-          tooltip="Maior taxa de atendimentos com Status = 'Transferido' entre os agentes com volume mínimo. Fórmula: Atendimentos transferidos do agente ÷ Atendimentos Humano + Misto do agente × 100."
+          valor={n(maiorTransferencia?.transferidos)}
+          detalhe={`${participacaoTransferencias(maiorTransferencia).toFixed(1).replace(".", ",")}% de todas as transferências dos agentes`}
+          tooltip="Mostra quem realizou a maior quantidade absoluta de transferências no período. Não divide pelo volume de atendimentos do consultor. A participação exibida abaixo é: Transferências do agente ÷ Total de transferências atribuídas aos agentes × 100."
         />
       </div>
 
@@ -230,11 +236,13 @@ export function MonitoriaView({ filters }: { filters: DashboardFilters }) {
           tooltip="Ordena pela proporção de atendimentos que vieram da ASC com Status = 'Finalizado por inatividade'. O portal apenas contabiliza esse status; não classifica a conversa por conta própria."
         />
         <Ranking
-          titulo="Maior taxa de transferência"
+          titulo="Quem mais transfere"
           rows={dados.transferencia.slice(0, 10)}
-          valor={(r) => pct(r.pct_transferencia)}
-          subvalor={(r) => `${n(r.transferidos)} transferências`}
-          tooltip="Ordena pela proporção de atendimentos com Status = 'Transferido'. Fórmula: Transferidos ÷ Atendimentos Humano + Misto × 100."
+          valor={(r) => `${n(r.transferidos)} transf.`}
+          subvalor={(r) =>
+            `${participacaoTransferencias(r).toFixed(1).replace(".", ",")}% de todas as transferências dos agentes`
+          }
+          tooltip="Ordena os consultores pela quantidade total de atendimentos com Status = 'Transferido'. Aqui não usamos a taxa sobre o volume do próprio consultor. O percentual mostrado representa a participação do agente no total de transferências atribuídas aos agentes."
         />
       </div>
     </div>
