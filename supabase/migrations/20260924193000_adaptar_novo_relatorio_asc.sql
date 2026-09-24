@@ -7,8 +7,8 @@ ALTER TABLE public.atendimentos
   ADD COLUMN IF NOT EXISTS recorrencia_sistema text;
 
 UPDATE public.atendimentos
-SET telefone_normalizado = NULLIF(regexp_replace(coalesce(telefone,''), '\\D', '', 'g'), '')
-WHERE telefone_normalizado IS DISTINCT FROM NULLIF(regexp_replace(coalesce(telefone,''), '\\D', '', 'g'), '');
+SET telefone_normalizado = NULLIF(regexp_replace(coalesce(telefone,''), '\D', '', 'g'), '')
+WHERE telefone_normalizado IS DISTINCT FROM NULLIF(regexp_replace(coalesce(telefone,''), '\D', '', 'g'), '');
 
 CREATE INDEX IF NOT EXISTS idx_atendimentos_telefone_norm_data
   ON public.atendimentos (telefone_normalizado, data_entrada);
@@ -239,11 +239,11 @@ BEGIN
     'asc_rechamadas', COUNT(*) FILTER (WHERE recorrencia_origem ILIKE '%rechamada%'),
     'asc_recorrentes', COUNT(*) FILTER (WHERE recorrencia_origem ILIKE '%recorrente%'),
     'asc_reincidentes', COUNT(*) FILTER (WHERE recorrencia_origem ILIKE '%reincid%'),
-    'sys_rechamadas', COUNT(DISTINCT coalesce(nullif(trim(protocolo),''), id::text))
+    'sys_rechamadas', COUNT(DISTINCT coalesce(telefone_normalizado,'') || '|' || coalesce(nullif(trim(protocolo),''), id::text))
       FILTER (WHERE recorrencia_sistema = 'Rechamada'),
-    'sys_recorrentes', COUNT(DISTINCT coalesce(nullif(trim(protocolo),''), id::text))
+    'sys_recorrentes', COUNT(DISTINCT coalesce(telefone_normalizado,'') || '|' || coalesce(nullif(trim(protocolo),''), id::text))
       FILTER (WHERE recorrencia_sistema = 'Recorrente'),
-    'sys_reincidentes', COUNT(DISTINCT coalesce(nullif(trim(protocolo),''), id::text))
+    'sys_reincidentes', COUNT(DISTINCT coalesce(telefone_normalizado,'') || '|' || coalesce(nullif(trim(protocolo),''), id::text))
       FILTER (WHERE recorrencia_sistema = 'Reincidente'),
     'rechamadas', COUNT(*) FILTER (WHERE recorrencia_origem ILIKE '%rechamada%'),
     'recorrentes', COUNT(*) FILTER (WHERE recorrencia_origem ILIKE '%recorrente%'),
