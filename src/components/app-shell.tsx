@@ -9,6 +9,7 @@ import {
   Users,
   Clock,
   Activity,
+  ClipboardCheck,
   DatabaseZap,
   ShieldCheck,
   LogOut,
@@ -39,6 +40,7 @@ const NAV = [
   { to: "/agentes", label: "Agentes", icon: Users, adminOnly: false },
   { to: "/horarios", label: "Horários de Pico", icon: Clock, adminOnly: false },
   { to: "/operacional", label: "Operacional", icon: Activity, adminOnly: false },
+  { to: "/monitoria", label: "Monitoria", icon: ClipboardCheck, adminOnly: false },
   { to: "/gerenciar", label: "Gerenciar Base", icon: DatabaseZap, adminOnly: true },
   { to: "/usuarios", label: "Gerenciar Usuários", icon: ShieldCheck, adminOnly: true },
 ] as const;
