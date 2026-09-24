@@ -5,6 +5,8 @@ import { useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { Filters, useDashboardFilters } from "@/components/filters";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ExportButton } from "@/components/export-button";
+import { exportDateSuffix, withDashboardFilters } from "@/lib/export-utils";
 import { supabase } from "@/integrations/supabase/client";
 import {
   filtrosRpcArgs,
@@ -133,12 +135,14 @@ function KpiCard({
   detalhe,
   cor,
   tooltip,
+  filters,
 }: {
   titulo: string;
   valor: string;
   detalhe?: string;
   cor?: string;
   tooltip?: string;
+  filters: DashboardFilters;
 }) {
   const [showTooltip, setShowTooltip] = useState(false);
 
@@ -148,7 +152,18 @@ function KpiCard({
         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
           {titulo}
         </p>
-        {tooltip && (
+        <div className="flex items-center gap-2">
+          <ExportButton
+            compact
+            filename={`gav-${titulo}-${exportDateSuffix()}`}
+            sheetName={titulo}
+            fetchData={() =>
+              withDashboardFilters(filters, [
+                { Indicador: titulo, Valor: valor, Detalhe: detalhe ?? "" },
+              ])
+            }
+          />
+          {tooltip && (
           <div className="relative flex-shrink-0">
             <button
               onMouseEnter={() => setShowTooltip(true)}
@@ -168,6 +183,7 @@ function KpiCard({
             )}
           </div>
         )}
+        </div>
       </div>
       <p className={`mt-2 font-display text-3xl font-bold ${cor ?? "text-foreground"}`}>
         {valor}
@@ -214,6 +230,7 @@ function OperacionalPage() {
               valor={n(status.data?.finalizados)}
               detalhe={`${pct(status.data?.pct_finalizados)} do total`}
               cor="text-emerald-400"
+              filters={filters}
               tooltip="Atendimentos encerrados com sucesso após interação completa com o cliente. É o desfecho ideal de um atendimento."
             />
             <KpiCard
@@ -221,6 +238,7 @@ function OperacionalPage() {
               valor={n(status.data?.finalizados_inatividade)}
               detalhe={`${pct(status.data?.pct_inatividade)} do total`}
               cor="text-amber-400"
+              filters={filters}
               tooltip="Atendimentos encerrados automaticamente porque o cliente parou de responder. Alta taxa pode indicar demora no retorno do agente ou cliente não encontrou o que precisava."
             />
             <KpiCard
@@ -228,12 +246,14 @@ function OperacionalPage() {
               valor={n(status.data?.transferidos)}
               detalhe={`${pct(status.data?.pct_transferencia)} do total`}
               cor="text-blue-400"
+              filters={filters}
               tooltip="Atendimentos transferidos de uma fila ou agente para outro. Taxa alta pode indicar problema na triagem inicial ou na especialização das filas."
             />
             <KpiCard
               titulo="Em Atendimento"
               valor={n(status.data?.em_atendimento)}
               detalhe="Atendimentos abertos"
+              filters={filters}
               tooltip="Atendimentos que ainda estão em andamento no momento da análise. Número alto pode indicar acúmulo de demanda ou atendimentos muito longos."
             />
           </div>
@@ -257,6 +277,7 @@ function OperacionalPage() {
               titulo="Clientes únicos"
               valor={n(fcr.data?.total_clientes)}
               detalhe="Telefones distintos no período"
+              filters={filters}
               tooltip="Quantidade de clientes diferentes que entraram em contato no período, identificados pelo número de telefone. Um cliente pode ter múltiplos atendimentos."
             />
             <KpiCard
@@ -264,6 +285,7 @@ function OperacionalPage() {
               valor={n(fcr.data?.resolvidos_primeiro_contato)}
               detalhe={`${pct(fcr.data?.fcr_percentual)} dos clientes`}
               cor="text-emerald-400"
+              filters={filters}
               tooltip="First Call Resolution (FCR): clientes que não voltaram a entrar em contato nas 24 horas seguintes ao atendimento. Indica que o problema foi resolvido logo na primeira tentativa. Quanto maior, melhor."
             />
             <KpiCard
@@ -271,6 +293,7 @@ function OperacionalPage() {
               valor={n(fcr.data?.retornaram_24h)}
               detalhe="Possível não resolução"
               cor="text-rose-400"
+              filters={filters}
               tooltip="Clientes que voltaram a entrar em contato em menos de 24 horas após o atendimento. Indica possível não resolução do problema no primeiro contato. Quanto menor, melhor."
             />
           </div>
@@ -294,12 +317,14 @@ function OperacionalPage() {
               titulo="QIC médio"
               valor={String(interacoes.data?.qic_medio ?? "—")}
               detalhe="Mensagens do cliente por atendimento"
+              filters={filters}
               tooltip="Quantidade de Interações do Cliente (QIC): média de mensagens enviadas pelo cliente em cada atendimento. Valor alto indica clientes que precisaram de muita troca para ser atendidos."
             />
             <KpiCard
               titulo="QIA médio"
               valor={String(interacoes.data?.qia_medio ?? "—")}
               detalhe="Mensagens do agente por atendimento"
+              filters={filters}
               tooltip="Quantidade de Interações do Agente (QIA): média de mensagens enviadas pelo agente em cada atendimento. Valor muito alto pode indicar atendimentos complexos ou falta de objetividade nas respostas."
             />
             <KpiCard
@@ -307,6 +332,7 @@ function OperacionalPage() {
               valor={n(interacoes.data?.alta_interacao)}
               detalhe="Atendimentos com 5+ mensagens do cliente"
               cor="text-amber-400"
+              filters={filters}
               tooltip="Atendimentos onde o cliente enviou 5 ou mais mensagens. São os casos mais complexos ou onde o cliente teve dificuldade de ser atendido. Merecem atenção especial da gestão."
             />
           </div>
@@ -315,9 +341,31 @@ function OperacionalPage() {
 
       {/* CONCENTRAÇÃO POR AGENTE */}
       <div className="mb-8">
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Concentração de Volume por Agente
-        </h2>
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Concentração de Volume por Agente
+          </h2>
+          {(concentracao.data ?? []).length > 0 ? (
+            <ExportButton
+              compact
+              filename={`gav-concentracao-agentes-${exportDateSuffix()}`}
+              sheetName="Concentração por agente"
+              fetchData={() =>
+                withDashboardFilters(
+                  filters,
+                  (concentracao.data ?? []).map((row) => ({
+                    Agente: row.agente,
+                    Volume: Number(row.total),
+                    "% Volume": Number(row.percentual_volume ?? 0),
+                    "1ª Resposta": formatarDuracao(row.tpr_segundos),
+                    TMA: formatarDuracao(row.tma_segundos),
+                    "% Inatividade": Number(row.pct_inatividade ?? 0),
+                  })),
+                )
+              }
+            />
+          ) : null}
+        </div>
         {concentracao.isPending ? (
           <Skeleton className="h-64" />
         ) : concentracao.isError ? (
