@@ -118,6 +118,15 @@ const concentracaoQuery = (f: DashboardFilters) =>
       }),
   });
 
+
+function ErrorPanel({ error }: { error: unknown }) {
+  return (
+    <div className="surface border border-red-500/40 p-5 text-sm text-red-200">
+      Não foi possível carregar esta análise. {error instanceof Error ? error.message : "Erro na consulta."}
+    </div>
+  );
+}
+
 function KpiCard({
   titulo,
   valor,
@@ -196,6 +205,8 @@ function OperacionalPage() {
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-28" />)}
           </div>
+        ) : status.isError ? (
+          <ErrorPanel error={status.error} />
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <KpiCard
@@ -238,6 +249,8 @@ function OperacionalPage() {
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-28" />)}
           </div>
+        ) : fcr.isError ? (
+          <ErrorPanel error={fcr.error} />
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <KpiCard
@@ -273,6 +286,8 @@ function OperacionalPage() {
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-28" />)}
           </div>
+        ) : interacoes.isError ? (
+          <ErrorPanel error={interacoes.error} />
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <KpiCard
@@ -306,9 +321,7 @@ function OperacionalPage() {
         {concentracao.isPending ? (
           <Skeleton className="h-64" />
         ) : concentracao.isError ? (
-          <div className="surface flex items-center justify-center p-8 text-sm text-muted-foreground">
-            Erro ao carregar dados dos agentes.
-          </div>
+          <ErrorPanel error={concentracao.error} />
         ) : (concentracao.data ?? []).length === 0 ? (
           <div className="surface flex items-center justify-center p-8 text-sm text-muted-foreground">
             Sem dados no período selecionado.
