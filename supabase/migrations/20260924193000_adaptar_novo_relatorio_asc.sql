@@ -16,17 +16,14 @@ CREATE INDEX IF NOT EXISTS idx_atendimentos_telefone_norm_data
 -- Atualiza a chave técnica dos registros existentes para a mesma regra usada pelo novo importador.
 -- A composição evita descartar registros válidos quando o mesmo protocolo aparece mais de uma vez.
 UPDATE public.atendimentos
-SET source_record_key = encode(
-  digest(
+SET source_record_key =
     lower(coalesce(trim(protocolo),'')) || '|' ||
     coalesce(telefone_normalizado,'') || '|' ||
     coalesce(to_char(data_entrada AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),'') || '|' ||
     lower(coalesce(trim(conta),'')) || '|' ||
     lower(coalesce(trim(agente),'')) || '|' ||
-    lower(coalesce(trim(ativo_receptivo),''))
-  , 'sha256'),
-  'hex'
-);
+    lower(coalesce(trim(ativo_receptivo),''));
+
 
 -- Tipo especial usado em todos os relatórios.
 -- "Automação" agrega os tipos Automático + Notificação.
