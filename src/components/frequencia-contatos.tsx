@@ -1,5 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ExportButton } from "@/components/export-button";
+import { exportDateSuffix, withDashboardFilters } from "@/lib/export-utils";
 import {
   frequenciaContatosQuery,
   topClientesContatosQuery,
@@ -11,15 +13,29 @@ function Card({
   valor,
   detalhe,
   destaque,
+  filters,
 }: {
   titulo: string;
   valor: string;
   detalhe?: string;
   destaque?: boolean;
+  filters: DashboardFilters;
 }) {
   return (
     <div className="surface p-5">
-      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{titulo}</p>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{titulo}</p>
+        <ExportButton
+          compact
+          filename={`gav-${titulo}-${exportDateSuffix()}`}
+          sheetName={titulo}
+          fetchData={() =>
+            withDashboardFilters(filters, [
+              { Indicador: titulo, Valor: valor, Detalhe: detalhe ?? "" },
+            ])
+          }
+        />
+      </div>
       <p className={`mt-2 font-display text-3xl font-bold ${destaque ? "text-amber-300" : "text-foreground"}`}>
         {valor}
       </p>
@@ -64,17 +80,19 @@ export function FrequenciaContatos({ filters }: { filters: DashboardFilters }) {
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <Card titulo="Clientes únicos" valor={n(d?.clientes_unicos)} detalhe="Telefones distintos" />
+          <Card filters={filters} titulo="Clientes únicos" valor={n(d?.clientes_unicos)} detalhe="Telefones distintos" />
           <Card
+            filters={filters}
             titulo="Média de contatos"
             valor={Number(d?.media_contatos ?? 0).toFixed(2).replace(".", ",")}
             detalhe="Atendimentos por cliente"
           />
-          <Card titulo="1 contato" valor={n(d?.um_contato)} detalhe={pct(d?.um_contato)} />
-          <Card titulo="2 contatos" valor={n(d?.dois_contatos)} detalhe={pct(d?.dois_contatos)} />
-          <Card titulo="3 contatos" valor={n(d?.tres_contatos)} detalhe={pct(d?.tres_contatos)} />
-          <Card titulo="4+ contatos" valor={n(d?.quatro_mais)} detalhe={pct(d?.quatro_mais)} />
+          <Card filters={filters} titulo="1 contato" valor={n(d?.um_contato)} detalhe={pct(d?.um_contato)} />
+          <Card filters={filters} titulo="2 contatos" valor={n(d?.dois_contatos)} detalhe={pct(d?.dois_contatos)} />
+          <Card filters={filters} titulo="3 contatos" valor={n(d?.tres_contatos)} detalhe={pct(d?.tres_contatos)} />
+          <Card filters={filters} titulo="4+ contatos" valor={n(d?.quatro_mais)} detalhe={pct(d?.quatro_mais)} />
           <Card
+            filters={filters}
             titulo="5+ contatos"
             valor={n(d?.cinco_mais)}
             detalhe="Clientes de alta frequência"
@@ -84,13 +102,36 @@ export function FrequenciaContatos({ filters }: { filters: DashboardFilters }) {
       )}
 
       <div className="surface overflow-hidden">
-        <div className="border-b border-border px-4 py-3">
-          <h3 className="font-display text-sm font-bold text-foreground">
-            Clientes com maior número de contatos
-          </h3>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Telefone mascarado. As categorias de retorno usam o cálculo de recorrência do sistema.
-          </p>
+        <div className="flex items-start justify-between gap-3 border-b border-border px-4 py-3">
+          <div>
+            <h3 className="font-display text-sm font-bold text-foreground">
+              Clientes com maior número de contatos
+            </h3>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Telefone mascarado. As categorias de retorno usam o cálculo de recorrência do sistema.
+            </p>
+          </div>
+          {(top.data ?? []).length > 0 ? (
+            <ExportButton
+              compact
+              filename={`gav-clientes-maior-contato-${exportDateSuffix()}`}
+              sheetName="Clientes com mais contatos"
+              fetchData={() =>
+                withDashboardFilters(
+                  filters,
+                  (top.data ?? []).map((row, index) => ({
+                    Posição: index + 1,
+                    Cliente: row.telefone_mascarado,
+                    Contatos: row.contatos,
+                    Rechamadas: row.rechamadas,
+                    Reincidências: row.reincidentes,
+                    Recorrências: row.recorrentes,
+                    "Serviço principal": row.servico_principal ?? "",
+                  })),
+                )
+              }
+            />
+          ) : null}
         </div>
 
         {top.isPending ? (
