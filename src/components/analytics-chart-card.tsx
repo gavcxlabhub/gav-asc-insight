@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import { ResponsiveContainer } from "recharts";
 
 import { Skeleton } from "@/components/ui/skeleton";
+import { ExportButton } from "@/components/export-button";
+import { exportDateSuffix } from "@/lib/export-utils";
 
 export const CHART_TOOLTIP = {
   contentStyle: {
@@ -31,6 +33,9 @@ interface AnalyticsChartCardProps {
   acoes?: ReactNode;
   children: ReactNode;
   altura?: number;
+  exportRows?: Record<string, unknown>[];
+  exportFilename?: string;
+  exportSheetName?: string;
 }
 
 export function AnalyticsChartCard({
@@ -40,12 +45,25 @@ export function AnalyticsChartCard({
   acoes,
   children,
   altura = 280,
+  exportRows,
+  exportFilename,
+  exportSheetName,
 }: AnalyticsChartCardProps) {
   return (
     <div className="surface p-5">
       <div className="mb-4 flex items-center justify-between gap-2">
         <h3 className="font-display text-sm font-bold text-foreground">{titulo}</h3>
-        {acoes}
+        <div className="flex items-center gap-2">
+          {acoes}
+          {exportRows && exportRows.length > 0 ? (
+            <ExportButton
+              compact
+              filename={exportFilename ?? `gav-${titulo}-${exportDateSuffix()}`}
+              sheetName={exportSheetName ?? titulo}
+              fetchData={() => exportRows}
+            />
+          ) : null}
+        </div>
       </div>
       {loading ? (
         <Skeleton style={{ height: altura }} className="w-full" />
