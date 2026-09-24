@@ -297,6 +297,7 @@ export async function importAscFile(
   const novosRows = parsed;
   let inseridos = 0;
   let duplicados = duplicadosArquivo;
+  const telefonesInseridos = new Set<string>();
 
   const datas = parsed
     .map((r) => r["data_entrada"] as string | null)
@@ -333,9 +334,12 @@ export async function importAscFile(
     const { data: inseridosBatch, error } = await supabase
       .from("atendimentos")
       .upsert(batch as any, { onConflict: "source_record_key", ignoreDuplicates: true })
-      .select("source_record_key");
+      .select("source_record_key, telefone_normalizado, data_entrada");
     if (error) throw new Error(`[${(error as any).code}] ${error.message}`);
     inseridos += inseridosBatch?.length ?? 0;
+    for (const row of inseridosBatch ?? []) {
+      if (row.telefone_normalizado) telefonesInseridos.add(row.telefone_normalizado);
+    }
     onProgress({
       stage: "salvando",
       processed: Math.min(i + BATCH_SIZE, novosRows.length),
@@ -359,11 +363,40 @@ export async function importAscFile(
       total: novosRows.length,
       message: "Atualizando indicadores de recorrência…",
     });
-    const { error: recorrenciaError } = await (supabase as any).rpc(
-      "recalcular_recorrencia_sistema",
-    );
-    if (recorrenciaError) {
-      throw new Error(`Falha ao atualizar recorrência: ${recorrenciaError.message}`);
+
+    const telefones = Array.from(telefonesInseridos);
+    const PHONE_BATCH = 500;
+    for (let i = 0; i < telefones.length; i += PHONE_BATCH) {
+      const lote = telefones.slice(i, i + PHONE_BATCH);
+      const { error: recorrenciaError } = await (supabase as any).rpc(
+        "recalcular_recorrencia_sistema_telefones",
+        { p_telefones: lote },
+      );
+      if (recorrenciaError) {
+        throw new Error(`Falha ao atualizar recorrência: ${recorrenciaError.message}`);
+      }
+    }
+
+    if (periodoInicio && periodoFim) {
+      const inicioResumo = periodoInicio.slice(0, 10);
+      const fimBase = new Date(periodoFim);
+      fimBase.setUTCDate(fimBase.getUTCDate() + 90);
+      const fimResumo = fimBase.toISOString().slice(0, 10);
+
+      onProgress({
+        stage: "salvando",
+        processed: novosRows.length,
+        total: novosRows.length,
+        message: "Atualizando resumo analítico…",
+      });
+
+      const { error: resumoError } = await (supabase as any).rpc(
+        "refresh_atendimentos_resumo",
+        { p_inicio: inicioResumo, p_fim: fimResumo },
+      );
+      if (resumoError) {
+        throw new Error(`Falha ao atualizar resumo analítico: ${resumoError.message}`);
+      }
     }
   }
 
