@@ -78,7 +78,7 @@ export function KpiCards({ filters }: { filters: DashboardFilters }) {
         titulo="Total de atendimentos"
         valor={n(total)}
         loading={isPending}
-        tooltip="Quantidade total de atendimentos registrados no período e filtros selecionados, incluindo automáticos, humanos e mistos."
+        tooltip="Quantidade total de registros no período e filtros selecionados, incluindo Humano, Misto, Automático e Notificação."
       />
       <KpiCard
         titulo="Com humano / Automação"
