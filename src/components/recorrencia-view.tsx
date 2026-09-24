@@ -13,6 +13,7 @@ import {
 } from "recharts";
 
 import { Button } from "@/components/ui/button";
+import { FrequenciaContatos } from "@/components/frequencia-contatos";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   AXIS_TICK,
@@ -222,6 +223,8 @@ export function RecorrenciaView({ filters }: { filters: DashboardFilters }) {
           tipo="reincid"
         />
       </div>
+
+      <FrequenciaContatos filters={filters} />
     </div>
   );
 }
