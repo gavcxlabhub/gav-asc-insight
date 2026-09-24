@@ -1,5 +1,9 @@
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  finalizarIndicadoresImportacao,
+  prepararFilaImportacao,
+} from "@/lib/import-post-process";
 
 export type ImportStage =
   | "idle"
@@ -25,6 +29,8 @@ export interface ImportSummary {
   periodoInicio: string | null;
   periodoFim: string | null;
   importacaoId: string | null;
+  processamentoPendente?: boolean;
+  aviso?: string;
 }
 
 function normalizeHeader(value: string): string {
@@ -356,55 +362,61 @@ export async function importAscFile(
     .update({ registros_novos: inseridos, duplicados, invalidos })
     .eq("id", importacaoId);
 
-  if (inseridos > 0) {
-    onProgress({
-      stage: "salvando",
-      processed: novosRows.length,
-      total: novosRows.length,
-      message: "Atualizando indicadores de recorrência…",
-    });
+  let processamentoPendente = false;
+  let aviso: string | undefined;
 
-    const telefones = Array.from(telefonesInseridos);
-    const PHONE_BATCH = 500;
-    for (let i = 0; i < telefones.length; i += PHONE_BATCH) {
-      const lote = telefones.slice(i, i + PHONE_BATCH);
-      const { error: recorrenciaError } = await (supabase as any).rpc(
-        "recalcular_recorrencia_sistema_telefones",
-        { p_telefones: lote },
-      );
-      if (recorrenciaError) {
-        throw new Error(`Falha ao atualizar recorrência: ${recorrenciaError.message}`);
-      }
+  if (inseridos > 0 && periodoInicio && periodoFim) {
+    try {
+      const telefones = Array.from(telefonesInseridos);
 
-      const { error: clientesResumoError } = await (supabase as any).rpc(
-        "refresh_clientes_resumo_telefones",
-        { p_telefones: lote },
-      );
-      if (clientesResumoError) {
-        throw new Error(`Falha ao atualizar FCR: ${clientesResumoError.message}`);
-      }
-    }
+      await supabase
+        .from("importacoes")
+        .update({
+          processamento_status: "processando",
+          processamento_etapa: "fila",
+          processamento_mensagem: "Preparando indicadores da nova base.",
+          processamento_atualizado_em: new Date().toISOString(),
+        } as any)
+        .eq("id", importacaoId);
 
-    if (periodoInicio && periodoFim) {
-      const inicioResumo = periodoInicio.slice(0, 10);
-      const fimBase = new Date(periodoFim);
-      fimBase.setUTCDate(fimBase.getUTCDate() + 90);
-      const fimResumo = fimBase.toISOString().slice(0, 10);
-
-      onProgress({
-        stage: "salvando",
-        processed: novosRows.length,
-        total: novosRows.length,
-        message: "Atualizando resumo analítico…",
+      await prepararFilaImportacao(importacaoId, telefones, (p) => {
+        onProgress({
+          stage: "salvando",
+          processed: p.processados,
+          total: p.total,
+          message: p.mensagem,
+        });
       });
 
-      const { error: resumoError } = await (supabase as any).rpc(
-        "refresh_atendimentos_resumo",
-        { p_inicio: inicioResumo, p_fim: fimResumo },
-      );
-      if (resumoError) {
-        throw new Error(`Falha ao atualizar resumo analítico: ${resumoError.message}`);
-      }
+      await finalizarIndicadoresImportacao({
+        importacaoId,
+        periodoInicio,
+        periodoFim,
+        onProgress: (p) => {
+          onProgress({
+            stage: "salvando",
+            processed: p.processados,
+            total: p.total,
+            message: p.mensagem,
+          });
+        },
+      });
+    } catch (error) {
+      processamentoPendente = true;
+      aviso =
+        error instanceof Error
+          ? `A base foi importada, mas os indicadores ficaram pendentes: ${error.message}`
+          : "A base foi importada, mas os indicadores ficaram pendentes.";
+
+      await supabase
+        .from("importacoes")
+        .update({
+          processamento_status: "pendente",
+          processamento_etapa: "pendente",
+          processamento_mensagem: aviso,
+          processamento_atualizado_em: new Date().toISOString(),
+        } as any)
+        .eq("id", importacaoId);
     }
   }
 
@@ -418,5 +430,7 @@ export async function importAscFile(
     periodoInicio,
     periodoFim,
     importacaoId,
+    processamentoPendente,
+    aviso,
   };
 }

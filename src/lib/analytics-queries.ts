@@ -34,6 +34,10 @@ export interface ImportacaoResumo {
   duplicados: number | null;
   invalidos: number | null;
   created_at: string | null;
+  processamento_status: string | null;
+  processamento_etapa: string | null;
+  processamento_mensagem: string | null;
+  processamento_atualizado_em: string | null;
 }
 
 export const importacoesQuery = () =>
@@ -44,7 +48,7 @@ export const importacoesQuery = () =>
       const { data, error } = await supabase
         .from("importacoes")
         .select(
-          "id, nome_arquivo, periodo_inicio, periodo_fim, total_lido, registros_novos, duplicados, invalidos, created_at",
+          "id, nome_arquivo, periodo_inicio, periodo_fim, total_lido, registros_novos, duplicados, invalidos, created_at, processamento_status, processamento_etapa, processamento_mensagem, processamento_atualizado_em",
         )
         .order("created_at", { ascending: false })
         .limit(50);

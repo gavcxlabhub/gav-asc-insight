@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Upload, FileSpreadsheet, CheckCircle2 } from "lucide-react";
+import { Upload, FileSpreadsheet, CheckCircle2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -47,9 +47,15 @@ export function ImportDialog({ userId }: { userId: string }) {
     try {
       const result = await importAscFile(file, userId, setProgress);
       setSummary(result);
-      toast.success(
-        `Importação concluída: ${result.novos} novos registros de ${result.totalLido} lidos.`,
-      );
+      if (result.processamentoPendente) {
+        toast.warning(
+          `Base importada: ${result.novos} novos registros. Os indicadores podem ser retomados em Gerenciar Base.`,
+        );
+      } else {
+        toast.success(
+          `Importação concluída: ${result.novos} novos registros de ${result.totalLido} lidos.`,
+        );
+      }
       queryClient.invalidateQueries();
     } catch (error) {
       setProgress({ stage: "erro", processed: 0, total: 0 });
@@ -128,14 +134,23 @@ export function ImportDialog({ userId }: { userId: string }) {
               </span>
             </div>
             <Progress value={progress.stage === "concluido" ? 100 : percent} />
+            {progress.message ? (
+              <p className="text-xs text-muted-foreground">{progress.message}</p>
+            ) : null}
           </div>
         ) : null}
 
         {summary ? (
           <div className="surface space-y-3 p-4">
             <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-              <CheckCircle2 className="size-4 text-gold" />
-              Resumo da importação
+              {summary.processamentoPendente ? (
+                <AlertTriangle className="size-4 text-amber-400" />
+              ) : (
+                <CheckCircle2 className="size-4 text-gold" />
+              )}
+              {summary.processamentoPendente
+                ? "Base importada · indicadores pendentes"
+                : "Resumo da importação"}
             </div>
             <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
               {[
@@ -152,6 +167,13 @@ export function ImportDialog({ userId }: { userId: string }) {
                 </div>
               ))}
             </dl>
+            {summary.aviso ? (
+              <div className="rounded-md border border-amber-400/30 bg-amber-400/5 p-3 text-xs leading-relaxed text-muted-foreground">
+                {summary.aviso}
+                <br />
+                Acesse <strong>Gerenciar Base</strong> e use <strong>Finalizar indicadores</strong>. Não é necessário importar o arquivo novamente.
+              </div>
+            ) : null}
             <Button variant="outline" size="sm" onClick={() => setOpen(false)}>
               Fechar
             </Button>
