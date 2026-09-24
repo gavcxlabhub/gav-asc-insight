@@ -356,6 +356,21 @@ export async function importAscFile(
     .update({ registros_novos: novosRows.length, duplicados, invalidos })
     .eq("id", importacaoId);
 
+  if (novosRows.length > 0) {
+    onProgress({
+      stage: "salvando",
+      processed: novosRows.length,
+      total: novosRows.length,
+      message: "Atualizando indicadores de recorrência…",
+    });
+    const { error: recorrenciaError } = await (supabase as any).rpc(
+      "recalcular_recorrencia_sistema",
+    );
+    if (recorrenciaError) {
+      throw new Error(`Falha ao atualizar recorrência: ${recorrenciaError.message}`);
+    }
+  }
+
   onProgress({ stage: "concluido", processed: novosRows.length, total: novosRows.length });
 
   return {
