@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Trash2, DatabaseZap } from "lucide-react";
+import { Trash2, DatabaseZap, RefreshCw, CheckCircle2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -21,7 +22,12 @@ import {
   importacoesQuery,
   periodoBaseQuery,
   totalAtendimentosQuery,
+  type ImportacaoResumo,
 } from "@/lib/analytics-queries";
+import {
+  finalizarIndicadoresImportacao,
+  type PostProcessProgress,
+} from "@/lib/import-post-process";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -58,6 +64,8 @@ function GerenciarBase() {
   const importacoes = useQuery(importacoesQuery());
   const total = useQuery(totalAtendimentosQuery());
   const periodo = useQuery(periodoBaseQuery());
+  const [processandoId, setProcessandoId] = useState<string | null>(null);
+  const [processamento, setProcessamento] = useState<PostProcessProgress | null>(null);
 
   const remover = useMutation({
     mutationFn: async (id: string) => {
@@ -69,6 +77,40 @@ function GerenciarBase() {
       queryClient.invalidateQueries();
     },
     onError: (error: Error) => toast.error(error.message),
+  });
+
+  const finalizarIndicadores = useMutation({
+    mutationFn: async (imp: ImportacaoResumo) => {
+      if (!imp.periodo_inicio || !imp.periodo_fim) {
+        throw new Error("A importação não possui período válido para atualizar os indicadores.");
+      }
+
+      setProcessandoId(imp.id);
+      setProcessamento({
+        etapa: "recorrencia",
+        processados: 0,
+        total: 1,
+        mensagem: "Preparando retomada dos indicadores…",
+      });
+
+      await finalizarIndicadoresImportacao({
+        importacaoId: imp.id,
+        periodoInicio: imp.periodo_inicio,
+        periodoFim: imp.periodo_fim,
+        onProgress: setProcessamento,
+      });
+    },
+    onSuccess: async () => {
+      toast.success("Indicadores atualizados com sucesso.");
+      await queryClient.invalidateQueries();
+    },
+    onError: (error: Error) => {
+      toast.error(`Não foi possível concluir os indicadores: ${error.message}`);
+    },
+    onSettled: () => {
+      setProcessandoId(null);
+      setProcessamento(null);
+    },
   });
 
   if (!isAdmin) {
@@ -141,6 +183,7 @@ function GerenciarBase() {
                 <TableHead className="text-right">Novos</TableHead>
                 <TableHead className="text-right">Duplicados</TableHead>
                 <TableHead className="text-right">Inválidos</TableHead>
+                <TableHead>Indicadores</TableHead>
                 <TableHead />
               </TableRow>
             </TableHeader>
@@ -162,6 +205,52 @@ function GerenciarBase() {
                   <TableCell className="text-right">{imp.registros_novos ?? 0}</TableCell>
                   <TableCell className="text-right">{imp.duplicados ?? 0}</TableCell>
                   <TableCell className="text-right">{imp.invalidos ?? 0}</TableCell>
+                  <TableCell className="min-w-[230px]">
+                    {imp.processamento_status === "concluido" || !imp.processamento_status ? (
+                      <div className="flex items-center gap-2 text-xs text-emerald-400">
+                        <CheckCircle2 className="size-4" />
+                        Concluídos
+                      </div>
+                    ) : processandoId === imp.id ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-xs text-amber-300">
+                          <RefreshCw className="size-4 animate-spin" />
+                          Processando
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {processamento?.mensagem ?? "Atualizando indicadores…"}
+                        </p>
+                        {processamento && processamento.total > 0 ? (
+                          <p className="text-[11px] text-muted-foreground">
+                            {processamento.processados.toLocaleString("pt-BR")} /{" "}
+                            {processamento.total.toLocaleString("pt-BR")}
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-xs text-amber-300">
+                          <AlertTriangle className="size-4" />
+                          Indicadores pendentes
+                        </div>
+                        {imp.processamento_mensagem ? (
+                          <p className="max-w-[280px] text-[11px] leading-relaxed text-muted-foreground">
+                            {imp.processamento_mensagem}
+                          </p>
+                        ) : null}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 gap-1.5 text-xs"
+                          onClick={() => finalizarIndicadores.mutate(imp)}
+                          disabled={finalizarIndicadores.isPending}
+                        >
+                          <RefreshCw className="size-3.5" />
+                          Finalizar indicadores
+                        </Button>
+                      </div>
+                    )}
+                  </TableCell>
                   <TableCell className="text-right">
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
