@@ -375,6 +375,14 @@ export async function importAscFile(
       if (recorrenciaError) {
         throw new Error(`Falha ao atualizar recorrência: ${recorrenciaError.message}`);
       }
+
+      const { error: clientesResumoError } = await (supabase as any).rpc(
+        "refresh_clientes_resumo_telefones",
+        { p_telefones: lote },
+      );
+      if (clientesResumoError) {
+        throw new Error(`Falha ao atualizar FCR: ${clientesResumoError.message}`);
+      }
     }
 
     if (periodoInicio && periodoFim) {
