@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowUpDown } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ExportButton } from "@/components/export-button";
+import { exportDateSuffix, withDashboardFilters } from "@/lib/export-utils";
 import {
   detalhesDimensaoQuery,
   formatarDuracao,
@@ -118,13 +119,13 @@ export function DimensaoTable({
   }
 
   async function fetchExportData() {
-    return sorted.map((row) => {
+    return withDashboardFilters(filters, sorted.map((row) => {
       const obj: Record<string, unknown> = { [rotuloColuna]: row.rotulo };
       for (const col of colunas) {
         obj[col.titulo] = getCellValue(row, col.chave, total);
       }
       return obj;
-    });
+    }));
   }
 
   if (isPending) return <Skeleton className="h-64 w-full" />;
@@ -144,7 +145,8 @@ export function DimensaoTable({
           {sorted.length} {dimensao === "agente" ? "agentes" : dimensao === "servico" ? "serviços" : "contas"}
         </p>
         <ExportButton
-          filename={`gav-${dimensao}-${new Date().toISOString().slice(0, 10)}`}
+          filename={`gav-${dimensao}-${exportDateSuffix()}`}
+          sheetName={rotuloColuna}
           fetchData={fetchExportData}
         />
       </div>

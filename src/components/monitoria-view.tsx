@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import { Info } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ExportButton } from "@/components/export-button";
+import { exportDateSuffix, withDashboardFilters } from "@/lib/export-utils";
 import {
   formatarDuracao,
   monitoriaAgentesQuery,
@@ -41,18 +43,37 @@ function Destaque({
   valor,
   detalhe,
   tooltip,
+  filters,
 }: {
   titulo: string;
   agente?: string;
   valor: string;
   detalhe?: string;
   tooltip: string;
+  filters: DashboardFilters;
 }) {
   return (
     <div className="surface p-5">
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{titulo}</p>
-        <InfoHint texto={tooltip} label={titulo} />
+        <div className="flex items-center gap-2">
+          <ExportButton
+            compact
+            filename={`gav-monitoria-${titulo}-${exportDateSuffix()}`}
+            sheetName={titulo}
+            fetchData={() =>
+              withDashboardFilters(filters, [
+                {
+                  Indicador: titulo,
+                  Agente: agente ?? "",
+                  Valor: valor,
+                  Detalhe: detalhe ?? "",
+                },
+              ])
+            }
+          />
+          <InfoHint texto={tooltip} label={titulo} />
+        </div>
       </div>
       <p className="mt-2 font-display text-2xl font-bold text-foreground">{valor}</p>
       <p className="mt-1 truncate text-sm font-medium">{agente ?? "—"}</p>
@@ -67,18 +88,48 @@ function Ranking({
   valor,
   subvalor,
   tooltip,
+  filters,
 }: {
   titulo: string;
   rows: MonitoriaAgente[];
   valor: (row: MonitoriaAgente) => string;
   subvalor?: (row: MonitoriaAgente) => string;
   tooltip: string;
+  filters: DashboardFilters;
 }) {
   return (
     <div className="surface overflow-hidden">
       <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
         <h3 className="font-display text-sm font-bold text-foreground">{titulo}</h3>
-        <InfoHint texto={tooltip} label={titulo} />
+        <div className="flex items-center gap-2">
+          <ExportButton
+            compact
+            filename={`gav-monitoria-${titulo}-${exportDateSuffix()}`}
+            sheetName={titulo}
+            fetchData={() =>
+              withDashboardFilters(
+                filters,
+                rows.map((row, index) => ({
+                  Posição: index + 1,
+                  Agente: row.agente,
+                  "Atendimentos humanos": row.atendimentos_humanos,
+                  "TMA": formatarDuracao(row.tma_segundos),
+                  Rechamadas: row.rechamadas,
+                  "% Rechamada": row.pct_rechamada,
+                  Reincidências: row.reincidentes,
+                  "% Reincidência": row.pct_reincidencia,
+                  Recorrências: row.recorrentes,
+                  "% Recorrência": row.pct_recorrencia,
+                  Inatividade: row.inatividade,
+                  "% Inatividade": row.pct_inatividade,
+                  Transferências: row.transferidos,
+                  "% Transferência": row.pct_transferencia,
+                })),
+              )
+            }
+          />
+          <InfoHint texto={tooltip} label={titulo} />
+        </div>
       </div>
       <div>
         {rows.map((row, index) => (
@@ -167,6 +218,7 @@ export function MonitoriaView({ filters }: { filters: DashboardFilters }) {
           agente={maiorTma?.agente}
           valor={formatarDuracao(maiorTma?.tma_segundos)}
           detalhe={`${n(maiorTma?.atendimentos_humanos)} atendimentos`}
+          filters={filters}
           tooltip="Maior Tempo Médio de Atendimento entre os consultores considerados. O TMA é calculado pela duração média dos atendimentos Humano + Misto do agente no período. Não é uma nota de qualidade; serve para apontar atendimentos potencialmente mais longos para análise."
         />
         <Destaque
@@ -174,6 +226,7 @@ export function MonitoriaView({ filters }: { filters: DashboardFilters }) {
           agente={maiorRechamada?.agente}
           valor={pct(maiorRechamada?.pct_rechamada)}
           detalhe={`${n(maiorRechamada?.rechamadas)} rechamadas`}
+          filters={filters}
           tooltip="Maior taxa de Rechamada entre os agentes com volume mínimo. Rechamada é calculada pelo sistema quando o mesmo telefone volta em menos de 24 horas. Fórmula: Rechamadas do agente ÷ Atendimentos Humano + Misto do agente × 100."
         />
         <Destaque
@@ -181,6 +234,7 @@ export function MonitoriaView({ filters }: { filters: DashboardFilters }) {
           agente={maiorReincidencia?.agente}
           valor={pct(maiorReincidencia?.pct_reincidencia)}
           detalhe={`${n(maiorReincidencia?.reincidentes)} reincidências`}
+          filters={filters}
           tooltip="Maior taxa de Reincidência entre os agentes com volume mínimo. Reincidência é calculada pelo sistema quando o mesmo telefone volta entre 1 e 30 dias. Fórmula: Reincidências do agente ÷ Atendimentos Humano + Misto do agente × 100."
         />
         <Destaque
@@ -188,14 +242,16 @@ export function MonitoriaView({ filters }: { filters: DashboardFilters }) {
           agente={maiorInatividade?.agente}
           valor={pct(maiorInatividade?.pct_inatividade)}
           detalhe={`${n(maiorInatividade?.inatividade)} finalizações`}
+          filters={filters}
           tooltip="Maior taxa de registros que a própria ASC marcou com Status = 'Finalizado por inatividade'. O portal não interpreta a conversa para concluir inatividade; apenas usa o status recebido da ASC. Fórmula: Finalizados por inatividade do agente ÷ Atendimentos Humano + Misto do agente × 100."
         />
         <Destaque
-          titulo="Maior volume de transferências"
+          titulo="Atendimentos / Transferências"
           agente={maiorTransferencia?.agente}
-          valor={n(maiorTransferencia?.transferidos)}
+          valor={`${n(maiorTransferencia?.atendimentos_humanos)} / ${n(maiorTransferencia?.transferidos)}`}
           detalhe={`${participacaoTransferencias(maiorTransferencia).toFixed(1).replace(".", ",")}% de todas as transferências dos agentes`}
-          tooltip="Mostra quem realizou a maior quantidade absoluta de transferências no período. Não divide pelo volume de atendimentos do consultor. A participação exibida abaixo é: Transferências do agente ÷ Total de transferências atribuídas aos agentes × 100."
+          filters={filters}
+          tooltip="Mostra o agente com maior quantidade absoluta de transferências no período. O primeiro número é o total de atendimentos Humano + Misto do agente e o segundo é a quantidade de transferências. O ranking continua ordenado pela quantidade de transferências, não pelo volume de atendimentos."
         />
       </div>
 
@@ -205,6 +261,7 @@ export function MonitoriaView({ filters }: { filters: DashboardFilters }) {
           rows={dados.volume.slice(0, 10)}
           valor={(r) => n(r.atendimentos_humanos)}
           subvalor={(r) => `TMA ${formatarDuracao(r.tma_segundos)}`}
+          filters={filters}
           tooltip="Ordena os consultores pela quantidade de atendimentos Humano + Misto no período. É um indicador de volume produtivo, não de qualidade."
         />
         <Ranking
@@ -212,6 +269,7 @@ export function MonitoriaView({ filters }: { filters: DashboardFilters }) {
           rows={dados.tma.slice(0, 10)}
           valor={(r) => formatarDuracao(r.tma_segundos)}
           subvalor={(r) => `${n(r.atendimentos_humanos)} atendimentos humanos`}
+          filters={filters}
           tooltip="Ordena os consultores do maior para o menor Tempo Médio de Atendimento. O TMA considera os atendimentos Humano + Misto do agente no período."
         />
         <Ranking
@@ -219,6 +277,7 @@ export function MonitoriaView({ filters }: { filters: DashboardFilters }) {
           rows={dados.rechamada.slice(0, 10)}
           valor={(r) => pct(r.pct_rechamada)}
           subvalor={(r) => `${n(r.rechamadas)} rechamadas de ${n(r.atendimentos_humanos)} atendimentos`}
+          filters={filters}
           tooltip="Ordena pela proporção de Rechamadas. O sistema identifica Rechamada quando o mesmo telefone retorna em menos de 24 horas. Fórmula: Rechamadas ÷ Atendimentos Humano + Misto × 100."
         />
         <Ranking
@@ -226,6 +285,7 @@ export function MonitoriaView({ filters }: { filters: DashboardFilters }) {
           rows={dados.reincidencia.slice(0, 10)}
           valor={(r) => pct(r.pct_reincidencia)}
           subvalor={(r) => `${n(r.reincidentes)} reincidências de ${n(r.atendimentos_humanos)} atendimentos`}
+          filters={filters}
           tooltip="Ordena pela proporção de Reincidências. O sistema identifica Reincidência quando o mesmo telefone retorna entre 1 e 30 dias. Fórmula: Reincidências ÷ Atendimentos Humano + Misto × 100."
         />
         <Ranking
@@ -233,15 +293,17 @@ export function MonitoriaView({ filters }: { filters: DashboardFilters }) {
           rows={dados.inatividade.slice(0, 10)}
           valor={(r) => pct(r.pct_inatividade)}
           subvalor={(r) => `${n(r.inatividade)} casos`}
+          filters={filters}
           tooltip="Ordena pela proporção de atendimentos que vieram da ASC com Status = 'Finalizado por inatividade'. O portal apenas contabiliza esse status; não classifica a conversa por conta própria."
         />
         <Ranking
           titulo="Quem mais transfere"
           rows={dados.transferencia.slice(0, 10)}
-          valor={(r) => `${n(r.transferidos)} transf.`}
+          valor={(r) => `${n(r.atendimentos_humanos)} / ${n(r.transferidos)}`}
           subvalor={(r) =>
-            `${participacaoTransferencias(r).toFixed(1).replace(".", ",")}% de todas as transferências dos agentes`
+            `Atendimentos / Transferências · ${participacaoTransferencias(r).toFixed(1).replace(".", ",")}% do total de transferências`
           }
+          filters={filters}
           tooltip="Ordena os consultores pela quantidade total de atendimentos com Status = 'Transferido'. Aqui não usamos a taxa sobre o volume do próprio consultor. O percentual mostrado representa a participação do agente no total de transferências atribuídas aos agentes."
         />
       </div>

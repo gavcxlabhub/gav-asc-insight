@@ -7,10 +7,9 @@ import { Filters, useDashboardFilters } from "@/components/filters";
 import { KpiCards } from "@/components/kpi-cards";
 import { DashboardCharts } from "@/components/dashboard-charts";
 import { AtendimentosTable } from "@/components/atendimentos-table";
-import { ExportButton } from "@/components/export-button";
+
 import { useAuth } from "@/hooks/use-auth";
 import { totalAtendimentosQuery } from "@/lib/analytics-queries";
-import { buscarAtendimentosExport } from "@/lib/dashboard-queries";
 
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
@@ -62,28 +61,6 @@ function VisaoExecutiva() {
           <Filters state={state} onChange={setState} />
           <KpiCards filters={filters} />
           <DashboardCharts filters={filters} />
-          <div className="mt-4 flex justify-end">
-            <ExportButton
-              filename={`gav-atendimentos-${new Date().toISOString().slice(0, 10)}`}
-              fetchData={async () => {
-                const data = await buscarAtendimentosExport(filters, "");
-                return (data ?? []).map((r) => ({
-                  Protocolo: r.protocolo,
-                  Contato: r.contato,
-                  Agente: r.agente,
-                  Conta: r.conta,
-                  Servico: r.servico,
-                  Tipo: r.tipo,
-                  AtivoReceptivo: r.ativo_receptivo,
-                  Status: r.status,
-                  DataEntrada: r.data_entrada,
-                  TME: r.tempo_em_fila,
-                  TMA: r.tempo_atendimento,
-                  Recorrencia: r.recorrencia_origem,
-                }));
-              }}
-            />
-          </div>
           <AtendimentosTable filters={filters} />
         </>
       )}

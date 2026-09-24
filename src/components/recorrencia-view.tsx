@@ -14,6 +14,8 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { FrequenciaContatos } from "@/components/frequencia-contatos";
+import { ExportButton } from "@/components/export-button";
+import { exportDateSuffix, withDashboardFilters } from "@/lib/export-utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   AXIS_TICK,
@@ -37,17 +39,37 @@ function CardRecorrencia({
   valorAsc,
   total,
   loading,
+  filters,
 }: {
   titulo: string;
   valor: number;
   valorAsc: number;
   total: number;
   loading: boolean;
+  filters: DashboardFilters;
 }) {
   const pct = total ? (valor / total) * 100 : 0;
   return (
     <div className="surface p-5">
-      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{titulo}</p>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{titulo}</p>
+        <ExportButton
+          compact
+          filename={`gav-${titulo}-${exportDateSuffix()}`}
+          sheetName={titulo}
+          fetchData={() =>
+            withDashboardFilters(filters, [
+              {
+                Indicador: titulo,
+                "Sistema": valor,
+                "% do total": Number(pct.toFixed(2)),
+                "ASC informa": valorAsc,
+                "Total do período": total,
+              },
+            ])
+          }
+        />
+      </div>
       {loading ? (
         <div className="mt-3 space-y-2">
           <Skeleton className="h-8 w-24" />
@@ -91,6 +113,16 @@ function RankingRecorrencia({
       loading={isPending}
       vazio={dados.length === 0}
       altura={Math.max(280, dados.length * 30)}
+      exportRows={withDashboardFilters(
+        filters,
+        dados.map((d) => ({
+          Ranking: d.rotulo,
+          "Total atendimentos": Number(d.total),
+          Ocorrências: Number(d.com_recorrencia),
+          Percentual: Number(d.percentual ?? 0),
+        })),
+      )}
+      exportFilename={`gav-${titulo}-${exportDateSuffix()}`}
     >
       <BarChart data={dados} layout="vertical" margin={{ left: 12, right: 24 }}>
         <CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.15} />
@@ -125,6 +157,7 @@ export function RecorrenciaView({ filters }: { filters: DashboardFilters }) {
           valorAsc={kpis.data?.asc_rechamadas ?? 0}
           total={total}
           loading={kpis.isPending}
+          filters={filters}
         />
         <CardRecorrencia
           titulo="Recorrentes"
@@ -132,6 +165,7 @@ export function RecorrenciaView({ filters }: { filters: DashboardFilters }) {
           valorAsc={kpis.data?.asc_recorrentes ?? 0}
           total={total}
           loading={kpis.isPending}
+          filters={filters}
         />
         <CardRecorrencia
           titulo="Reincidentes"
@@ -139,6 +173,7 @@ export function RecorrenciaView({ filters }: { filters: DashboardFilters }) {
           valorAsc={kpis.data?.asc_reincidentes ?? 0}
           total={total}
           loading={kpis.isPending}
+          filters={filters}
         />
       </div>
 
@@ -147,6 +182,16 @@ export function RecorrenciaView({ filters }: { filters: DashboardFilters }) {
         loading={evolucao.isPending}
         vazio={serie.length === 0}
         altura={320}
+        exportRows={withDashboardFilters(
+          filters,
+          serie.map((d) => ({
+            Período: d.periodo,
+            Rechamadas: Number(d.rechamadas),
+            Recorrentes: Number(d.recorrentes),
+            Reincidentes: Number(d.reincidentes),
+          })),
+        )}
+        exportFilename={`gav-evolucao-recorrencia-${exportDateSuffix()}`}
         acoes={
           <div className="flex gap-1">
             <Button
