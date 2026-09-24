@@ -65,7 +65,15 @@ function KpiCard({ titulo, valor, detalhe, detalhe2, loading, tooltip }: CardPro
 }
 
 export function KpiCards({ filters }: { filters: DashboardFilters }) {
-  const { data, isPending } = useQuery(kpisQuery(filters));
+  const { data, isPending, isError, error } = useQuery(kpisQuery(filters));
+
+  if (isError) {
+    return (
+      <div className="surface border border-red-500/40 p-5 text-sm text-red-200">
+        Não foi possível carregar os indicadores. {error instanceof Error ? error.message : "Erro na consulta dos KPIs."}
+      </div>
+    );
+  }
   const n = (v: number | null | undefined) => (v ?? 0).toLocaleString("pt-BR");
   const total = data?.total ?? 0;
   const comHumano = data?.com_humano ?? data?.humanos ?? 0;
