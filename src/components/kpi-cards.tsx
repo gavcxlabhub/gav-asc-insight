@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Info } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ExportButton } from "@/components/export-button";
+import { exportDateSuffix, withDashboardFilters } from "@/lib/export-utils";
 import {
   formatarDuracao,
   kpisQuery,
@@ -16,9 +18,10 @@ interface CardProps {
   detalhe2?: string;
   loading: boolean;
   tooltip?: string;
+  filters: DashboardFilters;
 }
 
-function KpiCard({ titulo, valor, detalhe, detalhe2, loading, tooltip }: CardProps) {
+function KpiCard({ titulo, valor, detalhe, detalhe2, loading, tooltip, filters }: CardProps) {
   const [showTooltip, setShowTooltip] = useState(false);
 
   return (
@@ -27,7 +30,23 @@ function KpiCard({ titulo, valor, detalhe, detalhe2, loading, tooltip }: CardPro
         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
           {titulo}
         </p>
-        {tooltip && (
+        <div className="flex items-center gap-2">
+          <ExportButton
+            compact
+            filename={`gav-${titulo}-${exportDateSuffix()}`}
+            sheetName={titulo}
+            fetchData={() =>
+              withDashboardFilters(filters, [
+                {
+                  Indicador: titulo,
+                  Valor: valor,
+                  Detalhe: detalhe ?? "",
+                  "Informação adicional": detalhe2 ?? "",
+                },
+              ])
+            }
+          />
+          {tooltip && (
           <div className="relative flex-shrink-0">
             <button
               onMouseEnter={() => setShowTooltip(true)}
@@ -47,6 +66,7 @@ function KpiCard({ titulo, valor, detalhe, detalhe2, loading, tooltip }: CardPro
             )}
           </div>
         )}
+        </div>
       </div>
       {loading ? (
         <div className="mt-3 space-y-2">
@@ -89,6 +109,7 @@ export function KpiCards({ filters }: { filters: DashboardFilters }) {
         titulo="Total de atendimentos"
         valor={n(total)}
         loading={isPending}
+        filters={filters}
         tooltip="Quantidade total de registros no período e filtros selecionados, incluindo Humano, Misto, Automático e Notificação."
       />
       <KpiCard
@@ -96,6 +117,7 @@ export function KpiCards({ filters }: { filters: DashboardFilters }) {
         valor={`${n(comHumano)} / ${n(resolvidoIa)}`}
         detalhe={`Notificações: ${n(notificacoes)} · fora da taxa de resolução`}
         loading={isPending}
+        filters={filters}
         tooltip="Atendimento humano: registros Humano + Misto, pois houve participação de consultor. Resolvido pela IA: somente registros totalmente Automáticos. Notificações ficam separadas."
       />
       <KpiCard
@@ -103,12 +125,14 @@ export function KpiCards({ filters }: { filters: DashboardFilters }) {
         valor={`${taxaIa.toFixed(1).replace(".", ",")}%`}
         detalhe={`${taxaHumano.toFixed(1).replace(".", ",")}% encaminhados para humano`}
         loading={isPending}
+        filters={filters}
         tooltip="Percentual de atendimentos elegíveis que terminaram totalmente no automático. Fórmula: Automático ÷ (Automático + Humano + Misto). Notificações não entram no cálculo."
       />
       <KpiCard
         titulo="Ativos / Receptivos"
         valor={`${n(data?.ativos)} / ${n(data?.receptivos)}`}
         loading={isPending}
+        filters={filters}
         tooltip="Ativo: a empresa entrou em contato com o cliente (ex: notificações, campanhas, follow-up). Receptivo: o cliente entrou em contato com a empresa por iniciativa própria."
       />
       <KpiCard
@@ -116,6 +140,7 @@ export function KpiCards({ filters }: { filters: DashboardFilters }) {
         valor={formatarDuracao(data?.tme_segundos)}
         detalhe="Tempo médio em fila"
         loading={isPending}
+        filters={filters}
         tooltip="Tempo Médio de Espera (TME): tempo médio que o cliente aguardou na fila antes de ser atendido. Quanto menor, melhor a experiência do cliente."
       />
       <KpiCard
@@ -123,6 +148,7 @@ export function KpiCards({ filters }: { filters: DashboardFilters }) {
         valor={formatarDuracao(data?.tma_segundos)}
         detalhe="Tempo médio de atendimento"
         loading={isPending}
+        filters={filters}
         tooltip="Tempo Médio de Atendimento (TMA): tempo médio que durou cada atendimento após o início. Valores muito altos podem indicar complexidade ou falta de preparo do agente."
       />
       <KpiCard
@@ -130,6 +156,7 @@ export function KpiCards({ filters }: { filters: DashboardFilters }) {
         valor={formatarDuracao(data?.tpr_segundos)}
         detalhe="Da fila até a 1ª mensagem do agente"
         loading={isPending}
+        filters={filters}
         tooltip="Tempo de Primeira Resposta (TPR): tempo entre o cliente entrar na fila e receber a primeira mensagem do agente humano. Indica a agilidade da equipe em iniciar o atendimento."
       />
       <KpiCard
@@ -138,6 +165,7 @@ export function KpiCards({ filters }: { filters: DashboardFilters }) {
         detalhe={`${percentual(data?.sys_rechamadas ?? 0, total)} do período (sistema)`}
         detalhe2={`ASC informa: ${n(data?.asc_rechamadas)}`}
         loading={isPending}
+        filters={filters}
         tooltip="Clientes que voltaram a entrar em contato em menos de 24 horas após o atendimento anterior. Alta taxa pode indicar que o problema não foi resolvido no primeiro contato. O sistema calcula pelo histórico de telefone; a ASC calcula pelo protocolo."
       />
       <KpiCard
@@ -146,6 +174,7 @@ export function KpiCards({ filters }: { filters: DashboardFilters }) {
         detalhe={`${percentual(data?.sys_recorrentes ?? 0, total)} do período (sistema)`}
         detalhe2={`ASC informa: ${n(data?.asc_recorrentes)}`}
         loading={isPending}
+        filters={filters}
         tooltip="Clientes que voltaram a entrar em contato entre 30 e 90 dias após o último atendimento. Indica clientes que têm necessidades recorrentes ou problemas não resolvidos definitivamente."
       />
       <KpiCard
@@ -154,6 +183,7 @@ export function KpiCards({ filters }: { filters: DashboardFilters }) {
         detalhe={`${percentual(data?.sys_reincidentes ?? 0, total)} do período (sistema)`}
         detalhe2={`ASC informa: ${n(data?.asc_reincidentes)}`}
         loading={isPending}
+        filters={filters}
         tooltip="Clientes que voltaram a entrar em contato entre 1 e 30 dias após o último atendimento. Pode indicar resolução parcial do problema ou surgimento de nova demanda relacionada."
       />
     </div>
