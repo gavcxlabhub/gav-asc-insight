@@ -174,6 +174,7 @@ async function buildRow(
   };
 
   const telefone = raw["telefone"] === undefined ? null : String(raw["telefone"]).trim();
+  const telefoneNormalizado = normalizePhone(telefone);
   const dataEntrada = toIsoDate(raw["data_entrada"]);
   const protocolo = text("protocolo");
   const conta = text("conta");
@@ -189,7 +190,7 @@ async function buildRow(
   const key = await sha256Hex(
     [
       (protocolo ?? "").trim().toLowerCase(),
-      normalizePhone(telefone),
+      telefoneNormalizado,
       dataEntrada ?? "",
       (conta ?? "").trim().toLowerCase(),
       (agente ?? "").trim().toLowerCase(),
@@ -205,6 +206,7 @@ async function buildRow(
     servico: text("servico"),
     contato: text("contato"),
     telefone: telefone && telefone !== "" ? telefone : null,
+    telefone_normalizado: telefoneNormalizado || null,
     numero_externo: text("numero_externo"),
     canal: text("canal") ?? "Whatsapp",
     data_entrada: dataEntrada,
