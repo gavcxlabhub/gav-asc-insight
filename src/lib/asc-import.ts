@@ -163,7 +163,7 @@ export interface AtendimentoRow {
 function buildRow(
   raw: Record<string, unknown>,
   arquivo: string,
-): Promise<AtendimentoRow | null> {
+): AtendimentoRow | null {
   const text = (field: string): string | null => {
     const v = raw[field];
     if (v === null || v === undefined) return null;
@@ -235,6 +235,52 @@ function buildRow(
 
 const BATCH_SIZE = 500;
 
+function isStatementTimeoutError(error: unknown): boolean {
+  const message =
+    error && typeof error === "object" && "message" in error
+      ? String((error as { message?: unknown }).message ?? "")
+      : String(error ?? "");
+  return /statement timeout|canceling statement due to statement timeout/i.test(message);
+}
+
+async function upsertAtendimentosAdaptativo(
+  rows: Array<AtendimentoRow & { importacao_id: string }>,
+): Promise<Array<{ source_record_key: string | null; telefone_normalizado: string | null; data_entrada: string | null }>> {
+  if (rows.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from("atendimentos")
+    .upsert(rows as any, { onConflict: "source_record_key", ignoreDuplicates: true })
+    .select("source_record_key, telefone_normalizado, data_entrada");
+
+  if (!error) {
+    return (data ?? []) as Array<{
+      source_record_key: string | null;
+      telefone_normalizado: string | null;
+      data_entrada: string | null;
+    }>;
+  }
+
+  if (isStatementTimeoutError(error) && rows.length > 25) {
+    const meio = Math.ceil(rows.length / 2);
+    const esquerda = await upsertAtendimentosAdaptativo(rows.slice(0, meio));
+    const direita = await upsertAtendimentosAdaptativo(rows.slice(meio));
+    return [...esquerda, ...direita];
+  }
+
+  throw new Error(`[${(error as any).code ?? "erro"}] ${error.message}`);
+}
+
+async function contarRegistrosImportacao(importacaoId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from("atendimentos")
+    .select("id", { count: "exact", head: true })
+    .eq("importacao_id", importacaoId);
+
+  if (error) throw new Error(error.message);
+  return count ?? 0;
+}
+
 export async function importAscFile(
   file: File,
   userId: string,
@@ -301,9 +347,9 @@ export async function importAscFile(
 
   onProgress({ stage: "duplicatas", processed: parsed.length, total: parsed.length });
   const novosRows = parsed;
-  let inseridos = 0;
+  let inseridosNestaExecucao = 0;
   let duplicados = duplicadosArquivo;
-  const telefonesInseridos = new Set<string>();
+
 
   const datas = parsed
     .map((r) => r["data_entrada"] as string | null)
@@ -312,62 +358,155 @@ export async function importAscFile(
   const periodoInicio = datas[0] ?? null;
   const periodoFim = datas[datas.length - 1] ?? null;
 
-  const { data: importacao, error: impError } = await supabase
+  const { data: importacaoPendente, error: pendenteError } = await supabase
     .from("importacoes")
-    .insert({
-      nome_arquivo: file.name,
-      periodo_inicio: periodoInicio,
-      periodo_fim: periodoFim,
-      total_lido: dataRows.length,
-      registros_novos: 0,
-      duplicados: duplicadosArquivo,
-      invalidos,
-      usuario_id: userId,
-    })
-    .select("id")
-    .single();
-  if (impError) throw impError;
+    .select("id, registros_novos")
+    .eq("nome_arquivo", file.name)
+    .eq("total_lido", dataRows.length)
+    .eq("processamento_status", "pendente")
+    .eq("processamento_etapa", "importacao")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
-  const importacaoId = importacao.id as string;
+  if (pendenteError) throw pendenteError;
 
-  onProgress({ stage: "salvando", processed: 0, total: novosRows.length });
+  let importacaoId: string;
+  const retomandoImportacao = !!importacaoPendente?.id;
 
-  for (let i = 0; i < novosRows.length; i += BATCH_SIZE) {
-    const batch = novosRows.slice(i, i + BATCH_SIZE).map((r) => ({
-      ...r,
-      importacao_id: importacaoId,
-    }));
-    const { data: inseridosBatch, error } = await supabase
-      .from("atendimentos")
-      .upsert(batch as any, { onConflict: "source_record_key", ignoreDuplicates: true })
-      .select("source_record_key, telefone_normalizado, data_entrada");
-    if (error) throw new Error(`[${(error as any).code}] ${error.message}`);
-    inseridos += inseridosBatch?.length ?? 0;
-    for (const row of inseridosBatch ?? []) {
-      if (row.telefone_normalizado) telefonesInseridos.add(row.telefone_normalizado);
-    }
-    onProgress({
-      stage: "salvando",
-      processed: Math.min(i + BATCH_SIZE, novosRows.length),
-      total: novosRows.length,
-    });
-    await new Promise((r) => setTimeout(r, 50));
+  if (retomandoImportacao) {
+    importacaoId = importacaoPendente!.id as string;
+    await supabase
+      .from("importacoes")
+      .update({
+        processamento_status: "processando",
+        processamento_etapa: "importacao",
+        processamento_mensagem: "Retomando importação interrompida.",
+        processamento_atualizado_em: new Date().toISOString(),
+      } as any)
+      .eq("id", importacaoId);
+  } else {
+    const { data: importacao, error: impError } = await supabase
+      .from("importacoes")
+      .insert({
+        nome_arquivo: file.name,
+        periodo_inicio: periodoInicio,
+        periodo_fim: periodoFim,
+        total_lido: dataRows.length,
+        registros_novos: 0,
+        duplicados: duplicadosArquivo,
+        invalidos,
+        usuario_id: userId,
+        processamento_status: "processando",
+        processamento_etapa: "importacao",
+        processamento_mensagem: "Importando registros da ASC.",
+        processamento_atualizado_em: new Date().toISOString(),
+      } as any)
+      .select("id")
+      .single();
+    if (impError) throw impError;
+    importacaoId = importacao.id as string;
   }
 
-  const duplicadosBanco = Math.max(0, novosRows.length - inseridos);
-  duplicados += duplicadosBanco;
+  onProgress({
+    stage: "salvando",
+    processed: 0,
+    total: novosRows.length,
+    message: retomandoImportacao
+      ? "Retomando a mesma base sem duplicar os registros já salvos…"
+      : "Salvando registros no banco…",
+  });
+
+  try {
+    for (let i = 0; i < novosRows.length; i += BATCH_SIZE) {
+      const batch = novosRows.slice(i, i + BATCH_SIZE).map((r) => ({
+        ...r,
+        importacao_id: importacaoId,
+      }));
+
+      const inseridosBatch = await upsertAtendimentosAdaptativo(batch as Array<
+        AtendimentoRow & { importacao_id: string }
+      >);
+
+      inseridosNestaExecucao += inseridosBatch.length;
+
+      onProgress({
+        stage: "salvando",
+        processed: Math.min(i + BATCH_SIZE, novosRows.length),
+        total: novosRows.length,
+        message: retomandoImportacao
+          ? `Retomando a importação · ${inseridosNestaExecucao.toLocaleString("pt-BR")} novos nesta tentativa…`
+          : `Salvando registros · ${inseridosNestaExecucao.toLocaleString("pt-BR")} inseridos…`,
+      });
+
+      if (i % 5000 === 0 || i + BATCH_SIZE >= novosRows.length) {
+        const totalImportadosAteAgora = await contarRegistrosImportacao(importacaoId);
+        await supabase
+          .from("importacoes")
+          .update({
+            registros_novos: totalImportadosAteAgora,
+            processamento_status: "processando",
+            processamento_etapa: "importacao",
+            processamento_mensagem: `Importando registros: ${totalImportadosAteAgora.toLocaleString("pt-BR")} salvos.`,
+            processamento_atualizado_em: new Date().toISOString(),
+          } as any)
+          .eq("id", importacaoId);
+      }
+
+      await new Promise((r) => setTimeout(r, 50));
+    }
+  } catch (error) {
+    const totalImportadosAteAgora = await contarRegistrosImportacao(importacaoId).catch(() => 0);
+    const mensagem =
+      error instanceof Error
+        ? `Importação interrompida após ${totalImportadosAteAgora.toLocaleString("pt-BR")} registros. Reenvie o mesmo arquivo para retomar. ${error.message}`
+        : `Importação interrompida após ${totalImportadosAteAgora.toLocaleString("pt-BR")} registros. Reenvie o mesmo arquivo para retomar.`;
+
+    await supabase
+      .from("importacoes")
+      .update({
+        registros_novos: totalImportadosAteAgora,
+        processamento_status: "pendente",
+        processamento_etapa: "importacao",
+        processamento_mensagem: mensagem,
+        processamento_atualizado_em: new Date().toISOString(),
+      } as any)
+      .eq("id", importacaoId);
+
+    throw new Error(mensagem);
+  }
+
+  const totalVinculadoImportacao = await contarRegistrosImportacao(importacaoId);
+  const duplicadosBanco = Math.max(0, novosRows.length - totalVinculadoImportacao);
+  duplicados = duplicadosArquivo + duplicadosBanco;
 
   await supabase
     .from("importacoes")
-    .update({ registros_novos: inseridos, duplicados, invalidos })
+    .update({
+      registros_novos: totalVinculadoImportacao,
+      duplicados,
+      invalidos,
+      processamento_status: "processando",
+      processamento_etapa: "fila",
+      processamento_mensagem: "Base concluída. Preparando indicadores.",
+      processamento_atualizado_em: new Date().toISOString(),
+    } as any)
     .eq("id", importacaoId);
 
   let processamentoPendente = false;
   let aviso: string | undefined;
 
-  if (inseridos > 0 && periodoInicio && periodoFim) {
+  const telefonesArquivo = Array.from(
+    new Set(
+      parsed
+        .map((row) => row["telefone_normalizado"] as string | null)
+        .filter((telefone): telefone is string => !!telefone),
+    ),
+  );
+
+  if (totalVinculadoImportacao > 0 && periodoInicio && periodoFim) {
     try {
-      const telefones = Array.from(telefonesInseridos);
+      const telefones = telefonesArquivo;
 
       await supabase
         .from("importacoes")
@@ -418,13 +557,23 @@ export async function importAscFile(
         } as any)
         .eq("id", importacaoId);
     }
+  } else {
+    await supabase
+      .from("importacoes")
+      .update({
+        processamento_status: "concluido",
+        processamento_etapa: "concluido",
+        processamento_mensagem: "Nenhum registro novo para processar.",
+        processamento_atualizado_em: new Date().toISOString(),
+      } as any)
+      .eq("id", importacaoId);
   }
 
   onProgress({ stage: "concluido", processed: novosRows.length, total: novosRows.length });
 
   return {
     totalLido: dataRows.length,
-    novos: inseridos,
+    novos: totalVinculadoImportacao,
     duplicados,
     invalidos,
     periodoInicio,
