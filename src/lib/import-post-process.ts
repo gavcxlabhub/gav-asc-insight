@@ -65,6 +65,26 @@ async function rpc<T>(name: string, args: Record<string, unknown> = {}): Promise
   return data;
 }
 
+async function rpcRetryOnTimeout<T>(
+  name: string,
+  args: Record<string, unknown>,
+  attempts = 3,
+): Promise<T> {
+  let lastError: unknown = null;
+
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      return await rpc<T>(name, args);
+    } catch (error) {
+      lastError = error;
+      if (!isStatementTimeout(error) || attempt === attempts) throw error;
+      await sleep(attempt * 500);
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error("Falha ao executar processamento.");
+}
+
 async function atualizarStatusImportacao(
   importacaoId: string,
   status: "processando" | "pendente" | "concluido",
@@ -150,8 +170,9 @@ export async function finalizarIndicadoresImportacao(options: {
     }
 
     const totalTelefones = Number(status.total_telefones);
+    let recorrenciaPendentes = Number(status.recorrencia_pendentes);
 
-    while (Number(status.recorrencia_pendentes) > 0) {
+    while (recorrenciaPendentes > 0) {
       const resultado = await processAdaptiveBatch<{
         processados: number;
         restantes: number;
@@ -162,7 +183,7 @@ export async function finalizarIndicadoresImportacao(options: {
         (limite) => {
           onProgress?.({
             etapa: "recorrencia",
-            processados: totalTelefones - Number(status.recorrencia_pendentes),
+            processados: Math.max(0, totalTelefones - recorrenciaPendentes),
             total: totalTelefones,
             mensagem: `Ajustando tamanho do lote após timeout técnico (tentativa com ${limite})…`,
           });
@@ -181,6 +202,7 @@ export async function finalizarIndicadoresImportacao(options: {
         throw new Error("A fila de recorrência não avançou. Tente retomar o processamento.");
       }
 
+      recorrenciaPendentes = restantes;
       status = {
         ...status,
         recorrencia_pendentes: restantes,
@@ -255,10 +277,14 @@ export async function finalizarIndicadoresImportacao(options: {
 
     for (let i = 0; i < intervalos.length; i++) {
       const faixa = intervalos[i]!;
-      await rpc<void>("refresh_atendimentos_resumo", {
-        p_inicio: faixa.inicio,
-        p_fim: faixa.fim,
-      });
+      await rpcRetryOnTimeout<void>(
+        "refresh_atendimentos_resumo",
+        {
+          p_inicio: faixa.inicio,
+          p_fim: faixa.fim,
+        },
+        3,
+      );
       onProgress?.({
         etapa: "resumo",
         processados: i + 1,
