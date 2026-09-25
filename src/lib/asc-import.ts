@@ -163,7 +163,7 @@ export interface AtendimentoRow {
 function buildRow(
   raw: Record<string, unknown>,
   arquivo: string,
-): Promise<AtendimentoRow | null> {
+): AtendimentoRow | null {
   const text = (field: string): string | null => {
     const v = raw[field];
     if (v === null || v === undefined) return null;
@@ -557,6 +557,16 @@ export async function importAscFile(
         } as any)
         .eq("id", importacaoId);
     }
+  } else {
+    await supabase
+      .from("importacoes")
+      .update({
+        processamento_status: "concluido",
+        processamento_etapa: "concluido",
+        processamento_mensagem: "Nenhum registro novo para processar.",
+        processamento_atualizado_em: new Date().toISOString(),
+      } as any)
+      .eq("id", importacaoId);
   }
 
   onProgress({ stage: "concluido", processed: novosRows.length, total: novosRows.length });
