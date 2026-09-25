@@ -205,17 +205,32 @@ function GerenciarBase() {
                   <TableCell className="text-right">{imp.registros_novos ?? 0}</TableCell>
                   <TableCell className="text-right">{imp.duplicados ?? 0}</TableCell>
                   <TableCell className="text-right">{imp.invalidos ?? 0}</TableCell>
-                  <TableCell className="min-w-[230px]">
+                  <TableCell className="min-w-[250px]">
                     {imp.processamento_status === "concluido" || !imp.processamento_status ? (
                       <div className="flex items-center gap-2 text-xs text-emerald-400">
                         <CheckCircle2 className="size-4" />
                         Concluídos
                       </div>
+                    ) : imp.processamento_etapa === "importacao" ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-xs text-amber-300">
+                          <AlertTriangle className="size-4" />
+                          Importação incompleta
+                        </div>
+                        {imp.processamento_mensagem ? (
+                          <p className="max-w-[300px] text-[11px] leading-relaxed text-muted-foreground">
+                            {imp.processamento_mensagem}
+                          </p>
+                        ) : null}
+                        <p className="max-w-[300px] text-[11px] font-medium leading-relaxed text-foreground">
+                          Use “Adicionar Base de Dados” e selecione o mesmo arquivo. O sistema continuará sem duplicar os registros já salvos.
+                        </p>
+                      </div>
                     ) : processandoId === imp.id ? (
                       <div className="space-y-2">
                         <div className="flex items-center gap-2 text-xs text-amber-300">
                           <RefreshCw className="size-4 animate-spin" />
-                          Processando
+                          Processando indicadores
                         </div>
                         <p className="text-xs text-muted-foreground">
                           {processamento?.mensagem ?? "Atualizando indicadores…"}
