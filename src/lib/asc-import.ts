@@ -347,9 +347,9 @@ export async function importAscFile(
 
   onProgress({ stage: "duplicatas", processed: parsed.length, total: parsed.length });
   const novosRows = parsed;
-  let inseridos = 0;
+  let inseridosNestaExecucao = 0;
   let duplicados = duplicadosArquivo;
-  const telefonesInseridos = new Set<string>();
+
 
   const datas = parsed
     .map((r) => r["data_entrada"] as string | null)
@@ -428,18 +428,15 @@ export async function importAscFile(
         AtendimentoRow & { importacao_id: string }
       >);
 
-      inseridos += inseridosBatch.length;
-      for (const row of inseridosBatch) {
-        if (row.telefone_normalizado) telefonesInseridos.add(row.telefone_normalizado);
-      }
+      inseridosNestaExecucao += inseridosBatch.length;
 
       onProgress({
         stage: "salvando",
         processed: Math.min(i + BATCH_SIZE, novosRows.length),
         total: novosRows.length,
         message: retomandoImportacao
-          ? "Retomando a importação e ignorando registros já salvos…"
-          : "Salvando registros no banco…",
+          ? `Retomando a importação · ${inseridosNestaExecucao.toLocaleString("pt-BR")} novos nesta tentativa…`
+          : `Salvando registros · ${inseridosNestaExecucao.toLocaleString("pt-BR")} inseridos…`,
       });
 
       if (i % 5000 === 0 || i + BATCH_SIZE >= novosRows.length) {
@@ -480,10 +477,7 @@ export async function importAscFile(
   }
 
   const totalVinculadoImportacao = await contarRegistrosImportacao(importacaoId);
-  const duplicadosBanco = Math.max(
-    0,
-    novosRows.length - totalVinculadoImportacao - duplicadosArquivo,
-  );
+  const duplicadosBanco = Math.max(0, novosRows.length - totalVinculadoImportacao);
   duplicados = duplicadosArquivo + duplicadosBanco;
 
   await supabase
