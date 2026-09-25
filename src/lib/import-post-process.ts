@@ -20,6 +20,42 @@ type ProgressCallback = (progress: PostProcessProgress) => void;
 
 type RpcError = { message: string } | null;
 
+function isStatementTimeout(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return /statement timeout|canceling statement due to statement timeout/i.test(message);
+}
+
+async function sleep(ms: number) {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function processAdaptiveBatch<T extends { processados?: number; restantes?: number }>(
+  rpcName: string,
+  importacaoId: string,
+  onRetry?: (limite: number) => void,
+): Promise<T> {
+  const limites = [250, 100, 50, 25];
+  let lastError: unknown = null;
+
+  for (const limite of limites) {
+    try {
+      return await rpc<T>(rpcName, {
+        p_importacao_id: importacaoId,
+        p_limite: limite,
+      });
+    } catch (error) {
+      lastError = error;
+      if (!isStatementTimeout(error)) throw error;
+      onRetry?.(limite);
+      await sleep(250);
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("O processamento excedeu o limite de tempo mesmo no menor lote.");
+}
+
 async function rpc<T>(name: string, args: Record<string, unknown> = {}): Promise<T> {
   const { data, error } = await (supabase as any).rpc(name, args) as {
     data: T;
@@ -116,14 +152,22 @@ export async function finalizarIndicadoresImportacao(options: {
     const totalTelefones = Number(status.total_telefones);
 
     while (Number(status.recorrencia_pendentes) > 0) {
-      const resultado = await rpc<{
+      const resultado = await processAdaptiveBatch<{
         processados: number;
         restantes: number;
         atualizados: number;
-      }>("processar_recorrencia_importacao_lote_fast", {
-        p_importacao_id: importacaoId,
-        p_limite: 500,
-      });
+      }>(
+        "processar_recorrencia_importacao_lote_fast",
+        importacaoId,
+        (limite) => {
+          onProgress?.({
+            etapa: "recorrencia",
+            processados: totalTelefones - Number(status.recorrencia_pendentes),
+            total: totalTelefones,
+            mensagem: `Ajustando tamanho do lote após timeout técnico (tentativa com ${limite})…`,
+          });
+        },
+      );
 
       const restantes = Number(resultado.restantes ?? 0);
       onProgress?.({
@@ -142,6 +186,8 @@ export async function finalizarIndicadoresImportacao(options: {
         recorrencia_pendentes: restantes,
         recorrencia_concluidos: totalTelefones - restantes,
       };
+
+      await sleep(100);
     }
 
     await atualizarStatusImportacao(
@@ -155,13 +201,21 @@ export async function finalizarIndicadoresImportacao(options: {
     let clientesPendentes = Number(status?.clientes_pendentes ?? 0);
 
     while (clientesPendentes > 0) {
-      const resultado = await rpc<{
+      const resultado = await processAdaptiveBatch<{
         processados: number;
         restantes: number;
-      }>("processar_clientes_importacao_lote", {
-        p_importacao_id: importacaoId,
-        p_limite: 500,
-      });
+      }>(
+        "processar_clientes_importacao_lote",
+        importacaoId,
+        (limite) => {
+          onProgress?.({
+            etapa: "clientes",
+            processados: Math.max(0, totalTelefones - clientesPendentes),
+            total: totalTelefones,
+            mensagem: `Ajustando tamanho do lote após timeout técnico (tentativa com ${limite})…`,
+          });
+        },
+      );
 
       clientesPendentes = Number(resultado.restantes ?? 0);
       onProgress?.({
@@ -174,6 +228,8 @@ export async function finalizarIndicadoresImportacao(options: {
       if (Number(resultado.processados ?? 0) === 0 && clientesPendentes > 0) {
         throw new Error("A atualização de clientes não avançou. Tente retomar o processamento.");
       }
+
+      await sleep(100);
     }
 
     await atualizarStatusImportacao(
@@ -192,7 +248,7 @@ export async function finalizarIndicadoresImportacao(options: {
     const intervalos: Array<{ inicio: string; fim: string }> = [];
     let cursor = inicio;
     while (cursor <= fim) {
-      const chunkFim = minDate(addDays(cursor, 6), fim);
+      const chunkFim = cursor;
       intervalos.push({ inicio: cursor, fim: chunkFim });
       cursor = addDays(chunkFim, 1);
     }
