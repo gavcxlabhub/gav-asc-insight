@@ -53,6 +53,8 @@ export const Route = createFileRoute("/_authenticated/gerenciar")({
         property: "og:description",
         content: "Importação e histórico das bases de atendimentos ASC.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: GerenciarBase,
