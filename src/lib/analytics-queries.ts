@@ -1,5 +1,5 @@
 import { queryOptions } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { importacoesClient as supabase } from "@/lib/importacoes-client";
 
 export const STALE_TIME = 5 * 60 * 1000;
 

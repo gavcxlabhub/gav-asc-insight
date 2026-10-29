@@ -46,7 +46,7 @@ function Destaque({
   filters,
 }: {
   titulo: string;
-  agente?: string;
+  agente?: string | undefined;
   valor: string;
   detalhe?: string;
   tooltip: string;

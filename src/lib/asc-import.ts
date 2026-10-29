@@ -1,5 +1,5 @@
 import * as XLSX from "xlsx";
-import { supabase } from "@/integrations/supabase/client";
+import { importacoesClient as supabase } from "@/lib/importacoes-client";
 import {
   finalizarIndicadoresImportacao,
   prepararFilaImportacao,
@@ -580,6 +580,6 @@ export async function importAscFile(
     periodoFim,
     importacaoId,
     processamentoPendente,
-    aviso,
+    ...(aviso === undefined ? {} : { aviso }),
   };
 }

@@ -17,7 +17,14 @@ import {
 
 export const Route = createFileRoute("/_authenticated/operacional")({
   head: () => ({
-    meta: [{ title: "Operacional — GAV ASC Analytics" }],
+    meta: [
+      { title: "Operacional — GAV ASC Analytics" },
+      { name: "description", content: "Indicadores operacionais dos atendimentos WhatsApp da GAV Resorts via ASC." },
+      { property: "og:title", content: "Operacional — GAV ASC Analytics" },
+      { property: "og:description", content: "Indicadores operacionais dos atendimentos WhatsApp da GAV Resorts via ASC." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
   }),
   component: OperacionalPage,
 });

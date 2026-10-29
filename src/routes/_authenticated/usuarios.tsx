@@ -9,6 +9,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth, type AppRole } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/_authenticated/usuarios")({
+  head: () => ({
+    meta: [
+      { title: "Usuários | GAV ASC Analytics" },
+      { name: "description", content: "Gestão de usuários e acessos à plataforma GAV ASC Analytics." },
+      { property: "og:title", content: "Usuários | GAV ASC Analytics" },
+      { property: "og:description", content: "Gestão de usuários e acessos à plataforma GAV ASC Analytics." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
   component: UsuariosPage,
 });
 
