@@ -4,6 +4,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/auth")({
+  head: () => ({
+    meta: [
+      { title: "Entrar | GAV ASC Analytics" },
+      { name: "description", content: "Acesso à plataforma corporativa de análise de atendimentos da GAV Resorts." },
+      { property: "og:title", content: "Entrar | GAV ASC Analytics" },
+      { property: "og:description", content: "Acesso à plataforma corporativa de análise de atendimentos da GAV Resorts." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
   component: AuthPage,
 });
 
